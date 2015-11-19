@@ -46,7 +46,7 @@ class Ceps: public Spectrogram
       const size_t n_ceps=19, const double f_min=0.,
       const double f_max=4000., const size_t delta_win=2,
       const double pre_emphasis_coef=0.95, const bool mel_scale=true,
-      const bool dct_norm=false);
+      const bool dct_norm=false, const bool ssfc_features=false);
 
     /**
      * @brief Copy constructor.
@@ -123,6 +123,11 @@ class Ceps: public Spectrogram
      */
     bool getWithDeltaDelta() const
     { return m_with_delta_delta; }
+    /**
+     * @brief Tells whether SSFC features are being computed
+     */
+    bool getSSFCFeatures() const
+    { return m_ssfc_features; }
 
     /**
      * @brief Returns the number of filters to keep
@@ -163,6 +168,13 @@ class Ceps: public Spectrogram
     void setWithDeltaDelta(bool with_delta_delta)
     { if (with_delta_delta) m_with_delta = true;
       m_with_delta_delta = with_delta_delta; }
+    /**
+     * @brief Set to true if you want to compute
+     * subband Spectral Flux coefficients (SSCF), which measures
+     * the frame-by-frame change in the power spectrum.
+     */
+    void setSSFCFeatures(bool ssfc_features)
+    { m_ssfc_features = ssfc_features; }
 
   private:
     /**
@@ -202,6 +214,7 @@ class Ceps: public Spectrogram
     bool m_with_energy;
     bool m_with_delta;
     bool m_with_delta_delta;
+    bool m_ssfc_features; //this flag should be true for SSFC features computation
 
     blitz::Array<double,2> m_dct_kernel;
 

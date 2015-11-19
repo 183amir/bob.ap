@@ -16,11 +16,11 @@ bob::ap::Ceps::Ceps(const double sampling_frequency,
     const double win_length_ms, const double win_shift_ms,
     const size_t n_filters, const size_t n_ceps, const double f_min,
     const double f_max, const size_t delta_win, const double pre_emphasis_coeff,
-    const bool mel_scale, const bool dct_norm):
+    const bool mel_scale, const bool dct_norm, const bool ssfc_features):
   bob::ap::Spectrogram(sampling_frequency, win_length_ms, win_shift_ms,
     n_filters, f_min, f_max, pre_emphasis_coeff, mel_scale),
   m_n_ceps(n_ceps), m_delta_win(delta_win), m_dct_norm(dct_norm),
-  m_with_energy(false), m_with_delta(false), m_with_delta_delta(false)
+  m_with_energy(false), m_with_delta(false), m_with_delta_delta(false), m_ssfc_features(false)
 {
   setEnergyBands(true);
   initCacheDctKernel();
@@ -31,7 +31,8 @@ bob::ap::Ceps::Ceps(const bob::ap::Ceps& other):
   m_n_ceps(other.m_n_ceps), m_delta_win(other.m_delta_win),
   m_dct_norm(other.m_dct_norm), m_with_energy(other.m_with_energy),
   m_with_delta(other.m_with_delta),
-  m_with_delta_delta(other.m_with_delta_delta)
+  m_with_delta_delta(other.m_with_delta_delta),
+  m_ssfc_features(other.m_ssfc_features)
 {
   initCacheDctKernel();
 }
@@ -48,6 +49,7 @@ bob::ap::Ceps::operator=(const bob::ap::Ceps& other)
     m_with_energy = other.m_with_energy;
     m_with_delta = other.m_with_delta;
     m_with_delta_delta = other.m_with_delta_delta;
+    m_ssfc_features = other.m_ssfc_features;
 
     initCacheDctKernel();
   }
@@ -62,7 +64,8 @@ bool bob::ap::Ceps::operator==(const bob::ap::Ceps& other) const
           m_dct_norm == other.m_dct_norm &&
           m_with_energy == other.m_with_energy &&
           m_with_delta == other.m_with_delta &&
-          m_with_delta_delta == other.m_with_delta_delta);
+          m_with_delta_delta == other.m_with_delta_delta &&
+          m_ssfc_features == other.m_ssfc_features);
 }
 
 bool bob::ap::Ceps::operator!=(const bob::ap::Ceps& other) const
@@ -110,7 +113,11 @@ blitz::TinyVector<int,2> bob::ap::Ceps::getShape(const size_t input_size) const
   blitz::TinyVector<int,2> res;
 
   // 1. Number of frames
-  res(0) = 1+((input_size-m_win_length)/m_win_shift);
+  res(0) = 1+((input_size-m_win_length)/m_win_shift) - 1;
+
+  //pav - reduce the number of frames by one for SSFC features
+  if (m_ssfc_features)
+     res(0) -= 1;
 
   // 2. Dimension of the feature vector
   int dim0=m_n_ceps;
@@ -140,6 +147,10 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   bob::core::array::assertSameShape(ceps_matrix, feature_shape);
   int n_frames=feature_shape(0);
 
+  // Create the holder for the previous frame and make sure it's the same as the current frame
+  // Used by SSFC features computation
+  blitz::Array<double,1> _prev_frame_d(m_cache_frame_d);
+
   blitz::Range r1(0,m_n_ceps-1);
   for (int i=0; i<n_frames; ++i)
   {
@@ -147,7 +158,7 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
     extractNormalizeFrame(input, i, m_cache_frame_d);
 
     // Update output with energy if required
-    if (m_with_energy)
+    if (m_with_energy && (i > 0))
       ceps_matrix(i,(int)m_n_ceps) = logEnergy(m_cache_frame_d);
 
     // Apply pre-emphasis
@@ -156,11 +167,30 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
     hammingWindow(m_cache_frame_d);
     // Take the power spectrum of the first part of the FFT
     powerSpectrumFFT(m_cache_frame_d);
-    // Filter with the triangular filter bank (either in linear or Mel domain)
-    filterBank(m_cache_frame_d);
-    // Apply DCT kernel and update the output
-    blitz::Array<double,1> ceps_matrix_row(ceps_matrix(i,r1));
-    applyDct(ceps_matrix_row);
+
+    if (m_ssfc_features && (i > 0))
+    {
+      // Computation of SSFC features is here
+      // We take the previous frame and find the difference between values of current and previous frames
+      m_cache_frame_d -= _prev_frame_d;
+      // We compute norm2 for the difference as per SSFC features
+      m_cache_frame_d = blitz::pow2(m_cache_frame_d);
+      // Then, we can apply the filter and DCT later on
+    }
+    // Filter and compute DCT always when i>0 or when it's not SSFC features
+    if ((i > 0) || !m_ssfc_features)
+    {
+      // Filter with the triangular filter bank (either in linear or Mel domain)
+      filterBank(m_cache_frame_d);
+
+      // Apply DCT kernel and update the output
+      // Add cache frame into the matrix only if it is not the first one.
+      blitz::Array<double,1> ceps_matrix_row(ceps_matrix(i,r1));
+      applyDct(ceps_matrix_row);
+    }
+    if (m_ssfc_features)
+      // we need to remember the current frame for SSFC features
+      _prev_frame_d = m_cache_frame_d;
   }
 
   //compute the center of the cut-off frequencies

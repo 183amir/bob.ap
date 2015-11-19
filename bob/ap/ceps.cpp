@@ -13,7 +13,7 @@
 PyDoc_STRVAR(s_ceps_str, BOB_EXT_MODULE_PREFIX ".Ceps");
 
 PyDoc_STRVAR(s_ceps_doc,
-"Ceps(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [n_ceps=19, [f_min=0., [f_max=4000., [delta_win=2, [pre_emphasis_coeff=0.95, [mel_scale=True, [dct_norm=True]]]]]]]]]]) -> new Ceps\n\
+"Ceps(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [n_ceps=19, [f_min=0., [f_max=4000., [delta_win=2, [pre_emphasis_coeff=0.95, [mel_scale=True, [dct_norm=True, [ssfc_features=False]]]]]]]]]]]) -> new Ceps\n\
 Ceps(other) -> new Ceps\n\
 \n\
 Objects of this class, after configuration, can extract the\n\
@@ -57,6 +57,10 @@ mel_scale\n\
 dct_norm\n\
   [bool] A factor by which the cepstral coefficients are\n\
   multiplied\n\
+ssfc_features\n\
+  [bool] Set to true if you want to compute\n\
+  subband Spectral Flux coefficients (SSCF), which measures\n\
+  the frame-by-frame change in the power spectrum\n\
 \n\
 other\n\
   [Ceps] an object of which is or inherits from ``Ceps``\n\
@@ -132,6 +136,7 @@ static int PyBobApCeps_InitParameters
     "pre_emphasis_coeff",
     "mel_scale",
     "dct_norm",
+    "ssfc_features",
     0};
   static char** kwlist = const_cast<char**>(const_kwlist);
 
@@ -146,19 +151,21 @@ static int PyBobApCeps_InitParameters
   double pre_emphasis_coeff = 0.95;
   PyObject* mel_scale = Py_True;
   PyObject* dct_norm = Py_True;
+  PyObject* ssfc_features = Py_False;
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "d|ddnnddndOO", kwlist,
         &sampling_frequency, &win_length_ms, &win_shift_ms, &n_filters,
         &n_ceps, &f_min, &f_max, &delta_win, &pre_emphasis_coeff,
-        &mel_scale, &dct_norm))
+        &mel_scale, &dct_norm, &ssfc_features))
     return -1;
 
   bool mel_scale_ = PyObject_IsTrue(mel_scale);
   bool dct_norm_ = PyObject_IsTrue(dct_norm);
+  bool ssfc_features_ = PyObject_Not(ssfc_features);
 
   try {
     self->cxx = new bob::ap::Ceps(sampling_frequency,
         win_length_ms, win_shift_ms, n_filters, n_ceps, f_min, f_max,
-        delta_win, pre_emphasis_coeff, mel_scale_, dct_norm_);
+        delta_win, pre_emphasis_coeff, mel_scale_, dct_norm_, ssfc_features_);
     if (!self->cxx) {
       PyErr_Format(PyExc_MemoryError, "cannot create new object of type `%s' - no more memory", Py_TYPE(self)->tp_name);
       return -1;
@@ -229,7 +236,7 @@ static PyObject* PyBobApCeps_Repr(PyBobApCepsObject* self) {
   Py_ssize_t n_filters = self->cxx->getNFilters();
   Py_ssize_t n_ceps = self->cxx->getNCeps();
   Py_ssize_t delta_win = self->cxx->getDeltaWin();
-  auto count = std::snprintf(buffer, MAXSIZE, "%s(sampling_frequency=%f, win_length_ms=%f, win_shift_ms=%f, n_filters=%" PY_FORMAT_SIZE_T "d, n_ceps=%" PY_FORMAT_SIZE_T "d, f_min=%f, f_max=%f, delta_win=%" PY_FORMAT_SIZE_T "d, pre_emphasis_coeff=%f, mel_scale=%s, dct_norm=%s)", Py_TYPE(self)->tp_name, self->cxx->getSamplingFrequency(), self->cxx->getWinLengthMs(), self->cxx->getWinShiftMs(), n_filters, n_ceps, self->cxx->getFMin(), self->cxx->getFMax(), delta_win, self->cxx->getPreEmphasisCoeff(), self->cxx->getMelScale()?"True":"False", self->cxx->getDctNorm()?"True":"False");
+  auto count = std::snprintf(buffer, MAXSIZE, "%s(sampling_frequency=%f, win_length_ms=%f, win_shift_ms=%f, n_filters=%" PY_FORMAT_SIZE_T "d, n_ceps=%" PY_FORMAT_SIZE_T "d, f_min=%f, f_max=%f, delta_win=%" PY_FORMAT_SIZE_T "d, pre_emphasis_coeff=%f, mel_scale=%s, dct_norm=%s, ssfc_features=%s)", Py_TYPE(self)->tp_name, self->cxx->getSamplingFrequency(), self->cxx->getWinLengthMs(), self->cxx->getWinShiftMs(), n_filters, n_ceps, self->cxx->getFMin(), self->cxx->getFMax(), delta_win, self->cxx->getPreEmphasisCoeff(), self->cxx->getMelScale()?"True":"False", self->cxx->getDctNorm()?"True":"False", self->cxx->getSSFCFeatures()?"True":"False");
   return
 # if PY_VERSION_HEX >= 0x03000000
   PyUnicode_FromStringAndSize
@@ -367,6 +374,39 @@ static int PyBobApCeps_SetDctNorm
   }
   catch (...) {
     PyErr_Format(PyExc_RuntimeError, "cannot reset `dct_norm' of %s: unknown exception caught", Py_TYPE(self)->tp_name);
+    return -1;
+  }
+
+  return 0;
+
+}
+
+PyDoc_STRVAR(s_ssfc_features_str, "ssfc_features");
+PyDoc_STRVAR(s_ssfc_features_doc,
+"Make true if you want to compute SSFC features"
+);
+
+static PyObject* PyBobApCeps_GetSSFCFeatures
+(PyBobApCepsObject* self, void* /*closure*/) {
+  if (self->cxx->getSSFCFeatures()) Py_RETURN_TRUE;
+  else Py_RETURN_FALSE;
+}
+
+static int PyBobApCeps_SetSSFCFeatures
+(PyBobApCepsObject* self, PyObject* o, void* /*closure*/) {
+
+  bool b = PyObject_IsTrue(o);
+  if (PyErr_Occurred()) return -1;
+
+  try {
+    self->cxx->setSSFCFeatures(b);
+  }
+  catch (std::exception& ex) {
+    PyErr_SetString(PyExc_RuntimeError, ex.what());
+    return -1;
+  }
+  catch (...) {
+    PyErr_Format(PyExc_RuntimeError, "cannot reset `ssfc_features' of %s: unknown exception caught", Py_TYPE(self)->tp_name);
     return -1;
   }
 
@@ -514,6 +554,13 @@ static PyGetSetDef PyBobApCeps_getseters[] = {
       (getter)PyBobApCeps_GetWithDeltaDelta,
       (setter)PyBobApCeps_SetWithDeltaDelta,
       s_with_delta_delta_doc,
+      0
+    },
+    {
+      s_ssfc_features_str,
+      (getter)PyBobApCeps_GetSSFCFeatures,
+      (setter)PyBobApCeps_SetSSFCFeatures,
+      s_ssfc_features_doc,
       0
     },
     {0}  /* Sentinel */
