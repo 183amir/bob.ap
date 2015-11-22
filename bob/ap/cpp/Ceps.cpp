@@ -152,6 +152,9 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   // Used by SSFC features computation
   blitz::Array<double,1> _prev_frame_d;
   _prev_frame_d.resize(m_cache_frame_d.shape());
+  // Create the temporary holder for SSFC features computation
+  blitz::Array<double,1> _temp_frame_d;
+  _temp_frame_d.resize(m_cache_frame_d.shape());
 
   if (m_ssfc_features) {
     //we are going to always process the next frame within the loop
@@ -186,9 +189,13 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
 
     if (m_ssfc_features)
     {
-      // Computation of SSFC features is here
+      // retrieve the previous frame into our temp
+      _temp_frame_d = _prev_frame_d;
+      // remember the current frame for the next round, before we change current frame
+      _prev_frame_d = m_cache_frame_d;
+      // Computation of SSFC features:
       // We take the previous frame and find the difference between values of current and previous frames
-      m_cache_frame_d -= _prev_frame_d;
+      m_cache_frame_d -= _temp_frame_d;
       // We compute norm2 for the difference as per SSFC features
       m_cache_frame_d = blitz::pow2(m_cache_frame_d);
       // Then, we can apply the filter and DCT later on
@@ -199,11 +206,6 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
     // Apply DCT kernel and update the output
     blitz::Array<double,1> ceps_matrix_row(ceps_matrix(i,r1));
     applyDct(ceps_matrix_row);
-
-    if (m_ssfc_features) {
-      // we need to remember the current frame for SSFC features
-      _prev_frame_d = m_cache_frame_d;
-    }
   }
 
   //compute the center of the cut-off frequencies
