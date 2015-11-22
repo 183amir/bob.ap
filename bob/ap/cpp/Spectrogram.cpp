@@ -311,6 +311,7 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
 
 void bob::ap::Spectrogram::logTriangularFilterBank(blitz::Array<double,1>& data) const
 {
+//  for (int i=(m_n_filters-1); i>=0; --i)
   for (int i=0; i<(int)m_n_filters; ++i)
   {
     blitz::Array<double,1> data_slice(data(blitz::Range(m_p_index(i),m_p_index(i+2))));

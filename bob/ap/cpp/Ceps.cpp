@@ -113,9 +113,9 @@ blitz::TinyVector<int,2> bob::ap::Ceps::getShape(const size_t input_size) const
   blitz::TinyVector<int,2> res;
 
   // 1. Number of frames
-  res(0) = 1+((input_size-m_win_length)/m_win_shift) - 1;
+  res(0) = 1+((input_size-m_win_length)/m_win_shift);
 
-  //pav - reduce the number of frames by one for SSFC features
+  //reduce the number of frames by 1 for SSFC features, so the resulted matrix is of correct size
   if (m_ssfc_features)
      res(0) -= 1;
 
@@ -146,19 +146,35 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   // Check dimensionality of output array
   bob::core::array::assertSameShape(ceps_matrix, feature_shape);
   int n_frames=feature_shape(0);
+  int shift_frame=0;
 
   // Create the holder for the previous frame and make sure it's the same as the current frame
   // Used by SSFC features computation
-  blitz::Array<double,1> _prev_frame_d(m_cache_frame_d);
+  blitz::Array<double,1> _prev_frame_d;
+  _prev_frame_d.resize(m_cache_frame_d.shape());
+
+  if (m_ssfc_features) {
+    //we are going to always process the next frame within the loop
+    shift_frame = 1;
+    // Init the first frame to the input
+    extractNormalizeFrame(input, 0, _prev_frame_d);
+    // Apply pre-emphasis
+    pre_emphasis(_prev_frame_d);
+    // Apply the Hamming window
+    hammingWindow(_prev_frame_d);
+    // Take the power spectrum of the first part of the FFT
+    powerSpectrumFFT(_prev_frame_d);
+
+  }
 
   blitz::Range r1(0,m_n_ceps-1);
   for (int i=0; i<n_frames; ++i)
   {
-    // Set padded frame to zero
-    extractNormalizeFrame(input, i, m_cache_frame_d);
+    // Init the current frame from the input, we process (i+1)th frame for SSFC features
+    extractNormalizeFrame(input, i+shift_frame, m_cache_frame_d);
 
     // Update output with energy if required
-    if (m_with_energy && (i > 0))
+    if (m_with_energy)
       ceps_matrix(i,(int)m_n_ceps) = logEnergy(m_cache_frame_d);
 
     // Apply pre-emphasis
@@ -168,7 +184,7 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
     // Take the power spectrum of the first part of the FFT
     powerSpectrumFFT(m_cache_frame_d);
 
-    if (m_ssfc_features && (i > 0))
+    if (m_ssfc_features)
     {
       // Computation of SSFC features is here
       // We take the previous frame and find the difference between values of current and previous frames
@@ -177,20 +193,17 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
       m_cache_frame_d = blitz::pow2(m_cache_frame_d);
       // Then, we can apply the filter and DCT later on
     }
-    // Filter and compute DCT always when i>0 or when it's not SSFC features
-    if ((i > 0) || !m_ssfc_features)
-    {
-      // Filter with the triangular filter bank (either in linear or Mel domain)
-      filterBank(m_cache_frame_d);
+    // Filter with the triangular filter bank (either in linear or Mel domain)
+    filterBank(m_cache_frame_d);
 
-      // Apply DCT kernel and update the output
-      // Add cache frame into the matrix only if it is not the first one.
-      blitz::Array<double,1> ceps_matrix_row(ceps_matrix(i,r1));
-      applyDct(ceps_matrix_row);
-    }
-    if (m_ssfc_features)
+    // Apply DCT kernel and update the output
+    blitz::Array<double,1> ceps_matrix_row(ceps_matrix(i,r1));
+    applyDct(ceps_matrix_row);
+
+    if (m_ssfc_features) {
       // we need to remember the current frame for SSFC features
       _prev_frame_d = m_cache_frame_d;
+    }
   }
 
   //compute the center of the cut-off frequencies
