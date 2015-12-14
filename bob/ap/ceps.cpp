@@ -13,7 +13,7 @@
 PyDoc_STRVAR(s_ceps_str, BOB_EXT_MODULE_PREFIX ".Ceps");
 
 PyDoc_STRVAR(s_ceps_doc,
-"Ceps(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [n_ceps=19, [f_min=0., [f_max=4000., [delta_win=2, [pre_emphasis_coeff=0.95, [mel_scale=True, [dct_norm=True, [ssfc_features=False, [scfc_features=False, [scmc_features=False, [rect_filter=False, [inverse_filter=False]]]]]]]]]]]]]]]) -> new Ceps\n\
+"Ceps(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [n_ceps=19, [f_min=0., [f_max=4000., [delta_win=2, [pre_emphasis_coeff=0.95, [mel_scale=True, [dct_norm=True, [ssfc_features=False, [scfc_features=False, [scmc_features=False, [rect_filter=False, [inverse_filter=False, [normalize_spectrum=False]]]]]]]]]]]]]]]]) -> new Ceps\n\
 Ceps(other) -> new Ceps\n\
 \n\
 Objects of this class, after configuration, can extract the\n\
@@ -81,6 +81,10 @@ inverse_filter\n\
   [bool] tells whether cepstral features are extracted\n\
   using a rectungular filter (set it to ``True``), i.e., RFCC features,\n\
   instead of the default filter (the default value is ``False``)\n\
+\n\
+normalize_spectrum\n\
+  [bool] Tells whether to normalize the power spectrum of the signal.\n\
+  The default value is ``False``.\n\
 \n\
 other\n\
   [Ceps] an object of which is or inherits from ``Ceps``\n\
@@ -157,6 +161,7 @@ static int PyBobApCeps_InitParameters
     "mel_scale",
     "rect_filter",
     "inverse_filter",
+    "normalize_spectrum",
     "dct_norm",
     "ssfc_features",
     "scfc_features",
@@ -176,6 +181,7 @@ static int PyBobApCeps_InitParameters
   PyObject* mel_scale = Py_True;
   PyObject* rect_filter = Py_True;
   PyObject* inverse_filter = Py_True;
+  PyObject* normalize_spectrum = Py_True;
   PyObject* dct_norm = Py_True;
   PyObject* ssfc_features = Py_False;
   PyObject* scfc_features = Py_False;
@@ -183,13 +189,14 @@ static int PyBobApCeps_InitParameters
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "d|ddnnddndOO", kwlist,
         &sampling_frequency, &win_length_ms, &win_shift_ms, &n_filters,
         &n_ceps, &f_min, &f_max, &delta_win, &pre_emphasis_coeff,
-        &mel_scale, &rect_filter, &inverse_filter, &dct_norm,
+        &mel_scale, &rect_filter, &inverse_filter, &normalize_spectrum, &dct_norm,
         &ssfc_features, &scfc_features, &scmc_features))
     return -1;
 
   bool mel_scale_ = PyObject_IsTrue(mel_scale);
   bool rect_filter_ = PyObject_IsTrue(rect_filter);
   bool inverse_filter_ = PyObject_IsTrue(inverse_filter);
+  bool normalize_spectrum_ = PyObject_IsTrue(normalize_spectrum);
   bool dct_norm_ = PyObject_IsTrue(dct_norm);
   bool ssfc_features_ = PyObject_Not(ssfc_features);
   bool scfc_features_ = PyObject_Not(scfc_features);
@@ -198,7 +205,7 @@ static int PyBobApCeps_InitParameters
   try {
     self->cxx = new bob::ap::Ceps(sampling_frequency,
         win_length_ms, win_shift_ms, n_filters, n_ceps, f_min, f_max,
-        delta_win, pre_emphasis_coeff, mel_scale_, rect_filter_, inverse_filter_,
+        delta_win, pre_emphasis_coeff, mel_scale_, rect_filter_, inverse_filter_, normalize_spectrum_,
         dct_norm_, ssfc_features_, scfc_features_, scmc_features_);
     if (!self->cxx) {
       PyErr_Format(PyExc_MemoryError, "cannot create new object of type `%s' - no more memory", Py_TYPE(self)->tp_name);
@@ -270,7 +277,7 @@ static PyObject* PyBobApCeps_Repr(PyBobApCepsObject* self) {
   Py_ssize_t n_filters = self->cxx->getNFilters();
   Py_ssize_t n_ceps = self->cxx->getNCeps();
   Py_ssize_t delta_win = self->cxx->getDeltaWin();
-  auto count = std::snprintf(buffer, MAXSIZE, "%s(sampling_frequency=%f, win_length_ms=%f, win_shift_ms=%f, n_filters=%" PY_FORMAT_SIZE_T "d, n_ceps=%" PY_FORMAT_SIZE_T "d, f_min=%f, f_max=%f, delta_win=%" PY_FORMAT_SIZE_T "d, pre_emphasis_coeff=%f, mel_scale=%s, rect_filter=%s, inverse_filter=%s, dct_norm=%s, ssfc_features=%s, scfc_features=%s, scmc_features=%s)", Py_TYPE(self)->tp_name, self->cxx->getSamplingFrequency(), self->cxx->getWinLengthMs(), self->cxx->getWinShiftMs(), n_filters, n_ceps, self->cxx->getFMin(), self->cxx->getFMax(), delta_win, self->cxx->getPreEmphasisCoeff(), self->cxx->getMelScale()?"True":"False", self->cxx->getRectangularFilter()?"True":"False", self->cxx->getInverseFilter()?"True":"False", self->cxx->getDctNorm()?"True":"False", self->cxx->getSSFCFeatures()?"True":"False", self->cxx->getSCFCFeatures()?"True":"False", self->cxx->getSCMCFeatures()?"True":"False");
+  auto count = std::snprintf(buffer, MAXSIZE, "%s(sampling_frequency=%f, win_length_ms=%f, win_shift_ms=%f, n_filters=%" PY_FORMAT_SIZE_T "d, n_ceps=%" PY_FORMAT_SIZE_T "d, f_min=%f, f_max=%f, delta_win=%" PY_FORMAT_SIZE_T "d, pre_emphasis_coeff=%f, mel_scale=%s, rect_filter=%s, inverse_filter=%s, normalize_spectrum=%s, dct_norm=%s, ssfc_features=%s, scfc_features=%s, scmc_features=%s)", Py_TYPE(self)->tp_name, self->cxx->getSamplingFrequency(), self->cxx->getWinLengthMs(), self->cxx->getWinShiftMs(), n_filters, n_ceps, self->cxx->getFMin(), self->cxx->getFMax(), delta_win, self->cxx->getPreEmphasisCoeff(), self->cxx->getMelScale()?"True":"False", self->cxx->getRectangularFilter()?"True":"False", self->cxx->getInverseFilter()?"True":"False", self->cxx->getNormalizeSpectrum()?"True":"False", self->cxx->getDctNorm()?"True":"False", self->cxx->getSSFCFeatures()?"True":"False", self->cxx->getSCFCFeatures()?"True":"False", self->cxx->getSCMCFeatures()?"True":"False");
   return
 # if PY_VERSION_HEX >= 0x03000000
   PyUnicode_FromStringAndSize
