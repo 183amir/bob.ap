@@ -2,6 +2,7 @@
  * @date Wed Jan 11:09:30 2013 +0200
  * @author Elie Khoury <Elie.Khoury@idiap.ch>
  * @author Laurent El Shafey <Laurent.El-Shafey@idiap.ch>
+ * @author Pavel Korshunov <Pavel.Korshunov@idiap.ch>
  *
  *
  * Copyright (C) Idiap Research Institute, Martigny, Switzerland
@@ -14,12 +15,13 @@
 bob::ap::Spectrogram::Spectrogram(const double sampling_frequency,
     const double win_length_ms, const double win_shift_ms,
     const size_t n_filters, const double f_min, const double f_max,
-    const double pre_emphasis_coeff, const bool mel_scale):
+    const double pre_emphasis_coeff, const bool mel_scale,
+    const bool rect_filter, const bool inverse_filter):
   bob::ap::Energy(sampling_frequency, win_length_ms, win_shift_ms),
   m_n_filters(n_filters), m_f_min(f_min), m_f_max(f_max),
   m_pre_emphasis_coeff(pre_emphasis_coeff), m_mel_scale(mel_scale),
   m_fb_out_floor(1.), m_energy_filter(false), m_log_filter(true),
-  m_energy_bands(false), m_fft()
+  m_energy_bands(false), m_rect_filter(rect_filter), m_inverse_filter(inverse_filter), m_fft()
 {
   // Check pre-emphasis coefficient
   if (pre_emphasis_coeff < 0. || pre_emphasis_coeff > 1.) {
@@ -44,7 +46,8 @@ bob::ap::Spectrogram::Spectrogram(const Spectrogram& other):
   m_pre_emphasis_coeff(other.m_pre_emphasis_coeff),
   m_mel_scale(other.m_mel_scale), m_fb_out_floor(other.m_fb_out_floor),
   m_energy_filter(other.m_energy_filter), m_log_filter(other.m_log_filter),
-  m_energy_bands(other.m_energy_bands), m_fft(other.m_fft)
+  m_energy_bands(other.m_energy_bands), m_rect_filter(other.m_rect_filter),
+  m_inverse_filter(other.m_inverse_filter), m_fft(other.m_fft)
 {
   // Initialization
   initWinLength();
@@ -71,6 +74,8 @@ bob::ap::Spectrogram& bob::ap::Spectrogram::operator=(const bob::ap::Spectrogram
     m_log_filter = other.m_log_filter;
     m_energy_bands = other.m_energy_bands;
     m_fft = other.m_fft;
+    m_rect_filter = other.m_rect_filter;
+    m_inverse_filter = other.m_inverse_filter;
 
     // Initialization
     initWinLength();
@@ -94,7 +99,9 @@ bool bob::ap::Spectrogram::operator==(const bob::ap::Spectrogram& other) const
           m_fb_out_floor == other.m_fb_out_floor &&
           m_energy_filter == other.m_energy_filter &&
           m_log_filter == other.m_log_filter &&
-          m_energy_bands == other.m_energy_bands);
+          m_energy_bands == other.m_energy_bands &&
+          m_rect_filter == other.m_rect_filter &&
+          m_inverse_filter == other.m_inverse_filter);
 }
 
 bool bob::ap::Spectrogram::operator!=(const bob::ap::Spectrogram& other) const
@@ -171,6 +178,12 @@ void bob::ap::Spectrogram::setMelScale(bool mel_scale)
   initCacheFilterBank();
 }
 
+void bob::ap::Spectrogram::setRectangularFilter(bool rect_filter)
+{
+  m_rect_filter = rect_filter;
+  initCacheFilterBank();
+}
+
 double bob::ap::Spectrogram::herzToMel(double f)
 {
   return (2595.*log10(1+f/700.));
@@ -212,9 +225,8 @@ void bob::ap::Spectrogram::initCachePIndex()
       m_p_index(i)=(int)round(m_win_size * factor);
     }
   }
-
   else
-  // Linear frequency decomposition (for LFCC)
+  // Linear frequency decomposition (for LFCC or RFCC)
   {
     const double cst_a = (m_win_size/m_sampling_frequency) * (m_f_max-m_f_min)/(double)(m_n_filters+1);
     const double cst_b = (m_win_size/m_sampling_frequency) * m_f_min;
@@ -237,16 +249,26 @@ void bob::ap::Spectrogram::initCacheFilters()
     int mi = m_p_index(i+1);
     int ri = m_p_index(i+2);
     blitz::Array<double,1> filt(ri-li+1);
-    // Fill in the left slice of the triangular filter
-    blitz::Array<double,1> filt_p1(filt(blitz::Range(0,mi-li-1)));
-    int len = mi-li+1;
-    double a = 1. / len;
-    filt_p1 = 1.-a*(len-1-ii);
-    // Fill in the right slice of the triangular filter
-    blitz::Array<double,1> filt_p2(filt(blitz::Range(mi-li,ri-li)));
-    len = ri-mi+1;
-    a = 1. / len;
-    filt_p2 = 1.-a*ii;
+
+    // if we have a rectangular filter, we do not need to care about slices
+    if (m_rect_filter) {
+      // Rectangular filter just have one value for all indexes
+      int len = mi-li+1;
+      double a = 1. / len;
+      filt = 1.-a*(len-1);
+    }
+    else {
+      // Fill in the left slice of the triangular filter
+      blitz::Array<double,1> filt_p1(filt(blitz::Range(0,mi-li-1)));
+      int len = mi-li+1;
+      double a = 1. / len;
+      filt_p1 = 1.-a*(len-1-ii);
+      // Fill in the right slice of the triangular filter
+      blitz::Array<double,1> filt_p2(filt(blitz::Range(mi-li,ri-li)));
+      len = ri-mi+1;
+      a = 1. / len;
+      filt_p2 = 1.-a*ii;
+    }
     // Append filter into the filterbank vector
     m_filter_bank.push_back(filt);
   }
@@ -311,8 +333,9 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
 
 void bob::ap::Spectrogram::logTriangularFilterBank(blitz::Array<double,1>& data) const
 {
-//  for (int i=(m_n_filters-1); i>=0; --i)
+
   for (int i=0; i<(int)m_n_filters; ++i)
+//  for (int i=((int)m_n_filters-1); i>=0; --i)
   {
     blitz::Array<double,1> data_slice(data(blitz::Range(m_p_index(i),m_p_index(i+2))));
     double res = blitz::sum(data_slice * m_filter_bank[i]);

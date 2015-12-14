@@ -2,6 +2,7 @@
  * @date Wed Jan 11:10:20 2013 +0200
  * @author Elie Khoury <Elie.Khoury@idiap.ch>
  * @author Laurent El Shafey <Laurent.El-Shafey@idiap.ch>
+ * @author Pavel Korshunov <Pavel.Korshunov@idiap.ch>
  *
  * @brief Implement spectrogram
  *
@@ -42,7 +43,7 @@ class Spectrogram: public Energy
       const double win_length_ms=20., const double win_shift_ms=10.,
       const size_t n_filters=24, const double f_min=0.,
       const double f_max=4000., const double pre_emphasis_coeff=0.95,
-      bool mel_scale=true);
+      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false);
 
     /**
      * @brief Copy Constructor
@@ -103,6 +104,17 @@ class Spectrogram: public Energy
      */
     bool getMelScale() const
     { return m_mel_scale; }
+    /**
+     * @brief Tells whether the frequencies of the filters in the filter bank
+     * are scaled using rectangular filter instead of Mel-scale or linear scale
+     */
+    bool getRectangularFilter() const
+    { return m_rect_filter; }
+    /**
+     * @brief Tells whether to apply the filter in the inversed order, i.e., from high frequencies to low.
+     */
+    bool getInverseFilter() const
+    {return m_inverse_filter;}
     /**
      * @brief Returns the pre-emphasis coefficient.
      */
@@ -170,6 +182,15 @@ class Spectrogram: public Energy
      * are taken from the linear or the Mel scale
      */
     virtual void setMelScale(bool mel_scale);
+    /**
+     * @brief Sets whether the rectangular filter is used instead of the default linear
+     */
+    virtual void setRectangularFilter(bool rect_filter);
+    /**
+     * @brief Sets whether to apply the filter in the inversed order, i.e., from high frequencies to low.
+     */
+    virtual void setInverseFilter(bool inverse_filter)
+    { m_inverse_filter = inverse_filter; }
     /**
      * @brief Sets whether we used the energy or the square root of the energy
      */
@@ -262,6 +283,8 @@ class Spectrogram: public Energy
     bool m_log_filter;
     bool m_energy_bands;
     double m_log_fb_out_floor;
+    bool m_rect_filter;
+    bool m_inverse_filter;
 
     blitz::Array<double,1> m_hamming_kernel;
     blitz::Array<int,1> m_p_index;

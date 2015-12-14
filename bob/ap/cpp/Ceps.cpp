@@ -2,6 +2,7 @@
  * @date Wed Jan 11:09:30 2013 +0200
  * @author Elie Khoury <Elie.Khoury@idiap.ch>
  * @author Laurent El Shafey <Laurent.El-Shafey@idiap.ch>
+ * @author Pavel Korshunov <Pavel.Korshunov@idiap.ch>
  *
  * @brief Implement Linear and Mel Frequency Cepstral Coefficients
  * functions (MFCC and LFCC)
@@ -16,11 +17,14 @@ bob::ap::Ceps::Ceps(const double sampling_frequency,
     const double win_length_ms, const double win_shift_ms,
     const size_t n_filters, const size_t n_ceps, const double f_min,
     const double f_max, const size_t delta_win, const double pre_emphasis_coeff,
-    const bool mel_scale, const bool dct_norm, const bool ssfc_features):
+    const bool mel_scale, const bool rect_filter, const bool inverse_filter,
+    const bool dct_norm, const bool ssfc_features,
+    const bool scfc_features, const bool scmc_features):
   bob::ap::Spectrogram(sampling_frequency, win_length_ms, win_shift_ms,
-    n_filters, f_min, f_max, pre_emphasis_coeff, mel_scale),
+    n_filters, f_min, f_max, pre_emphasis_coeff, mel_scale, rect_filter, inverse_filter),
   m_n_ceps(n_ceps), m_delta_win(delta_win), m_dct_norm(dct_norm),
-  m_with_energy(false), m_with_delta(false), m_with_delta_delta(false), m_ssfc_features(false)
+  m_with_energy(false), m_with_delta(false), m_with_delta_delta(false),
+  m_ssfc_features(ssfc_features), m_scfc_features(scfc_features), m_scmc_features(scmc_features)
 {
   setEnergyBands(true);
   initCacheDctKernel();
@@ -32,7 +36,9 @@ bob::ap::Ceps::Ceps(const bob::ap::Ceps& other):
   m_dct_norm(other.m_dct_norm), m_with_energy(other.m_with_energy),
   m_with_delta(other.m_with_delta),
   m_with_delta_delta(other.m_with_delta_delta),
-  m_ssfc_features(other.m_ssfc_features)
+  m_ssfc_features(other.m_ssfc_features),
+  m_scfc_features(other.m_scfc_features),
+  m_scmc_features(other.m_scmc_features)
 {
   initCacheDctKernel();
 }
@@ -50,6 +56,8 @@ bob::ap::Ceps::operator=(const bob::ap::Ceps& other)
     m_with_delta = other.m_with_delta;
     m_with_delta_delta = other.m_with_delta_delta;
     m_ssfc_features = other.m_ssfc_features;
+    m_scfc_features = other.m_scfc_features;
+    m_scmc_features = other.m_scmc_features;
 
     initCacheDctKernel();
   }
@@ -65,7 +73,9 @@ bool bob::ap::Ceps::operator==(const bob::ap::Ceps& other) const
           m_with_energy == other.m_with_energy &&
           m_with_delta == other.m_with_delta &&
           m_with_delta_delta == other.m_with_delta_delta &&
-          m_ssfc_features == other.m_ssfc_features);
+          m_ssfc_features == other.m_ssfc_features &&
+          m_scfc_features == other.m_scfc_features &&
+          m_scmc_features == other.m_scmc_features);
 }
 
 bool bob::ap::Ceps::operator!=(const bob::ap::Ceps& other) const
