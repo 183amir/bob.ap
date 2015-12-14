@@ -16,12 +16,13 @@ bob::ap::Spectrogram::Spectrogram(const double sampling_frequency,
     const double win_length_ms, const double win_shift_ms,
     const size_t n_filters, const double f_min, const double f_max,
     const double pre_emphasis_coeff, const bool mel_scale,
-    const bool rect_filter, const bool inverse_filter):
+    const bool rect_filter, const bool inverse_filter, const bool normalize_spectrum):
   bob::ap::Energy(sampling_frequency, win_length_ms, win_shift_ms),
   m_n_filters(n_filters), m_f_min(f_min), m_f_max(f_max),
   m_pre_emphasis_coeff(pre_emphasis_coeff), m_mel_scale(mel_scale),
   m_fb_out_floor(1.), m_energy_filter(false), m_log_filter(true),
-  m_energy_bands(false), m_rect_filter(rect_filter), m_inverse_filter(inverse_filter), m_fft()
+  m_energy_bands(false), m_rect_filter(rect_filter), m_inverse_filter(inverse_filter),
+  m_normalize_spectrum(normalize_spectrum), m_fft()
 {
   // Check pre-emphasis coefficient
   if (pre_emphasis_coeff < 0. || pre_emphasis_coeff > 1.) {
@@ -47,7 +48,7 @@ bob::ap::Spectrogram::Spectrogram(const Spectrogram& other):
   m_mel_scale(other.m_mel_scale), m_fb_out_floor(other.m_fb_out_floor),
   m_energy_filter(other.m_energy_filter), m_log_filter(other.m_log_filter),
   m_energy_bands(other.m_energy_bands), m_rect_filter(other.m_rect_filter),
-  m_inverse_filter(other.m_inverse_filter), m_fft(other.m_fft)
+  m_inverse_filter(other.m_inverse_filter), m_normalize_spectrum(other.m_normalize_spectrum), m_fft(other.m_fft)
 {
   // Initialization
   initWinLength();
@@ -76,6 +77,7 @@ bob::ap::Spectrogram& bob::ap::Spectrogram::operator=(const bob::ap::Spectrogram
     m_fft = other.m_fft;
     m_rect_filter = other.m_rect_filter;
     m_inverse_filter = other.m_inverse_filter;
+    m_normalize_spectrum = other.m_normalize_spectrum;
 
     // Initialization
     initWinLength();
@@ -101,6 +103,7 @@ bool bob::ap::Spectrogram::operator==(const bob::ap::Spectrogram& other) const
           m_log_filter == other.m_log_filter &&
           m_energy_bands == other.m_energy_bands &&
           m_rect_filter == other.m_rect_filter &&
+          m_normalize_spectrum == other.m_normalize_spectrum &&
           m_inverse_filter == other.m_inverse_filter);
 }
 
@@ -319,6 +322,8 @@ void bob::ap::Spectrogram::powerSpectrumFFT(blitz::Array<double,1>& x)
   x_half = blitz::abs(complex_half);
   if (m_energy_filter) // Apply the filter bank to the energy
     x_half = blitz::pow2(x_half);
+  if (m_normalize_spectrum) //normalize power spectrum
+    x_half -= blitz::mean(x_half);
 }
 
 void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)

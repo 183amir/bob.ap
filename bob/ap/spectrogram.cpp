@@ -13,7 +13,7 @@
 PyDoc_STRVAR(s_spectrogram_str, BOB_EXT_MODULE_PREFIX ".Spectrogram");
 
 PyDoc_STRVAR(s_spectrogram_doc,
-"Spectrogram(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [f_min=0., [f_max=4000., [pre_emphasis_coeff=0.95, [mel_scale=True, [rect_filter=True, [inverse_filter=True]]]]]]]]]) -> new Spectrogram\n\
+"Spectrogram(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [f_min=0., [f_max=4000., [pre_emphasis_coeff=0.95, [mel_scale=True, [rect_filter=True, [inverse_filter=True, [normalize_spectrum=True]]]]]]]]]]) -> new Spectrogram\n\
 Spectrogram(other) -> new Spectrogram\n\
 \n\
 Objects of this class, after configuration, can extract the\n\
@@ -56,6 +56,10 @@ inverse_filter\n\
   [bool] tells whether cepstral features are extracted\n\
   using a rectungular filter (set it to ``True``), i.e., RFCC features,\n\
   instead of the default filter (the default value is ``False``)\n\
+\n\
+normalize_spectrum\n\
+  [bool] Tells whether to normalize the power spectrum of the signal.\n\
+  The default value is ``False``.\n\
 \n\
 other\n\
   [Spectrogram] an object of which is or inherits from ``Spectrogram``\n\
@@ -128,6 +132,7 @@ static int PyBobApSpectrogram_InitParameters
     "mel_scale",
     "rect_filter",
     "inverse_filter",
+    "normalize_spectrum",
     0};
   static char** kwlist = const_cast<char**>(const_kwlist);
 
@@ -141,20 +146,22 @@ static int PyBobApSpectrogram_InitParameters
   PyObject* mel_scale = Py_True;
   PyObject* rect_filter = Py_True;
   PyObject* inverse_filter = Py_True;
+  PyObject* normalize_spectrum = Py_True;
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "d|ddndddO", kwlist,
         &sampling_frequency, &win_length_ms, &win_shift_ms,
         &n_filters, &f_min, &f_max, &pre_emphasis_coeff, &mel_scale,
-        &rect_filter, &inverse_filter))
+        &rect_filter, &inverse_filter, &normalize_spectrum))
     return -1;
 
   bool mel_scale_ = PyObject_IsTrue(mel_scale);
   bool rect_filter_ = PyObject_IsTrue(rect_filter);
   bool inverse_filter_ = PyObject_IsTrue(inverse_filter);
+  bool normalize_spectrum_ = PyObject_IsTrue(normalize_spectrum);
 
   try {
     self->cxx = new bob::ap::Spectrogram(sampling_frequency,
         win_length_ms, win_shift_ms, n_filters, f_min, f_max,
-        pre_emphasis_coeff, mel_scale_, rect_filter_, inverse_filter_);
+        pre_emphasis_coeff, mel_scale_, rect_filter_, inverse_filter_, normalize_spectrum_);
     if (!self->cxx) {
       PyErr_Format(PyExc_MemoryError, "cannot create new object of type `%s' - no more memory", Py_TYPE(self)->tp_name);
       return -1;
@@ -222,7 +229,7 @@ static PyObject* PyBobApSpectrogram_Repr(PyBobApSpectrogramObject* self) {
   static const int MAXSIZE = 256;
   char buffer[MAXSIZE];
   Py_ssize_t n_filters = self->cxx->getNFilters();
-  auto count = std::snprintf(buffer, MAXSIZE, "%s(sampling_frequency=%f, win_length_ms=%f, win_shift_ms=%f, n_filters=%" PY_FORMAT_SIZE_T "d, f_min=%f, f_max=%f, pre_emphasis_coeff=%f, mel_scale=%s, rect_filter=%s, inverse_filter=%s)", Py_TYPE(self)->tp_name, self->cxx->getSamplingFrequency(), self->cxx->getWinLengthMs(), self->cxx->getWinShiftMs(), n_filters, self->cxx->getFMin(), self->cxx->getFMax(), self->cxx->getPreEmphasisCoeff(), self->cxx->getMelScale()?"True":"False", self->cxx->getRectangularFilter()?"True":"False", self->cxx->getInverseFilter()?"True":"False");
+  auto count = std::snprintf(buffer, MAXSIZE, "%s(sampling_frequency=%f, win_length_ms=%f, win_shift_ms=%f, n_filters=%" PY_FORMAT_SIZE_T "d, f_min=%f, f_max=%f, pre_emphasis_coeff=%f, mel_scale=%s, rect_filter=%s, inverse_filter=%s, normalize_spectrum=%s)", Py_TYPE(self)->tp_name, self->cxx->getSamplingFrequency(), self->cxx->getWinLengthMs(), self->cxx->getWinShiftMs(), n_filters, self->cxx->getFMin(), self->cxx->getFMax(), self->cxx->getPreEmphasisCoeff(), self->cxx->getMelScale()?"True":"False", self->cxx->getRectangularFilter()?"True":"False", self->cxx->getInverseFilter()?"True":"False", self->cxx->getNormalizeSpectrum()?"True":"False");
   return
 # if PY_VERSION_HEX >= 0x03000000
   PyUnicode_FromStringAndSize
@@ -507,6 +514,39 @@ static int PyBobApSpectrogram_SetInverseFilter
 }
 
 
+PyDoc_STRVAR(s_normalize_spectrum_str, "normalize_spectrum");
+PyDoc_STRVAR(s_normalize_spectrum_doc,
+"Tells whether the filter is applied in the inversed order when cepstral features are extracted\n\
+");
+
+static PyObject* PyBobApSpectrogram_GetNormalizeSpectrum
+(PyBobApSpectrogramObject* self, void* /*closure*/) {
+  if (self->cxx->getNormalizeSpectrum()) Py_RETURN_TRUE;
+  else Py_RETURN_FALSE;
+}
+
+static int PyBobApSpectrogram_SetNormalizeSpectrum
+(PyBobApSpectrogramObject* self, PyObject* o, void* /*closure*/) {
+
+  bool b = PyObject_IsTrue(o);
+  if (PyErr_Occurred()) return -1;
+
+  try {
+    self->cxx->setNormalizeSpectrum(b);
+  }
+  catch (std::exception& ex) {
+    PyErr_SetString(PyExc_RuntimeError, ex.what());
+    return -1;
+  }
+  catch (...) {
+    PyErr_Format(PyExc_RuntimeError, "cannot reset `normalize_spectrum' of %s: unknown exception caught", Py_TYPE(self)->tp_name);
+    return -1;
+  }
+
+  return 0;
+}
+
+
 PyDoc_STRVAR(s_energy_filter_str, "energy_filter");
 PyDoc_STRVAR(s_energy_filter_doc,
 "Tells whether we use the energy or the square root of the energy"
@@ -654,6 +694,13 @@ static PyGetSetDef PyBobApSpectrogram_getseters[] = {
       (getter)PyBobApSpectrogram_GetInverseFilter,
       (setter)PyBobApSpectrogram_SetInverseFilter,
       s_inverse_filter_doc,
+      0
+    },
+    {
+      s_normalize_spectrum_str,
+      (getter)PyBobApSpectrogram_GetNormalizeSpectrum,
+      (setter)PyBobApSpectrogram_SetNormalizeSpectrum,
+      s_normalize_spectrum_doc,
       0
     },
     {

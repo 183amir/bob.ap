@@ -43,7 +43,7 @@ class Spectrogram: public Energy
       const double win_length_ms=20., const double win_shift_ms=10.,
       const size_t n_filters=24, const double f_min=0.,
       const double f_max=4000., const double pre_emphasis_coeff=0.95,
-      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false);
+      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false, bool normalize_spectrum=false);
 
     /**
      * @brief Copy Constructor
@@ -115,6 +115,11 @@ class Spectrogram: public Energy
      */
     bool getInverseFilter() const
     {return m_inverse_filter;}
+    /**
+     * @brief Tells whether to normalize power spectrum.
+     */
+    bool getNormalizeSpectrum() const
+    {return m_normalize_spectrum;}
     /**
      * @brief Returns the pre-emphasis coefficient.
      */
@@ -191,6 +196,11 @@ class Spectrogram: public Energy
      */
     virtual void setInverseFilter(bool inverse_filter)
     { m_inverse_filter = inverse_filter; }
+    /**
+     * @brief Sets whether to normalize the power spectrum of the signal.
+     */
+    virtual void setNormalizeSpectrum(bool normalize_spectrum)
+    { m_normalize_spectrum = normalize_spectrum; }
     /**
      * @brief Sets whether we used the energy or the square root of the energy
      */
@@ -285,6 +295,7 @@ class Spectrogram: public Energy
     double m_log_fb_out_floor;
     bool m_rect_filter;
     bool m_inverse_filter;
+    bool m_normalize_spectrum;
 
     blitz::Array<double,1> m_hamming_kernel;
     blitz::Array<int,1> m_p_index;
