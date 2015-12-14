@@ -43,8 +43,7 @@ class Spectrogram: public Energy
       const double win_length_ms=20., const double win_shift_ms=10.,
       const size_t n_filters=24, const double f_min=0.,
       const double f_max=4000., const double pre_emphasis_coeff=0.95,
-      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false,
-      bool normalize_spectrum=false);
+      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false, bool normalize_spectrum=false);
 
     /**
      * @brief Copy Constructor

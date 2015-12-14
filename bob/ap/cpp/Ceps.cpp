@@ -17,9 +17,9 @@ bob::ap::Ceps::Ceps(const double sampling_frequency,
     const double win_length_ms, const double win_shift_ms,
     const size_t n_filters, const size_t n_ceps, const double f_min,
     const double f_max, const size_t delta_win, const double pre_emphasis_coeff,
-    const bool mel_scale, const bool rect_filter, const bool inverse_filter,
+    const bool mel_scale, const bool rect_filter, const bool inverse_filter, const bool normalize_spectrum,
     const bool dct_norm, const bool ssfc_features,
-    const bool scfc_features, const bool scmc_features, const bool normalize_spectrum):
+    const bool scfc_features, const bool scmc_features):
   bob::ap::Spectrogram(sampling_frequency, win_length_ms, win_shift_ms,
     n_filters, f_min, f_max, pre_emphasis_coeff, mel_scale, rect_filter, inverse_filter, normalize_spectrum),
   m_n_ceps(n_ceps), m_delta_win(delta_win), m_dct_norm(dct_norm),
@@ -151,6 +151,8 @@ blitz::TinyVector<int,2> bob::ap::Ceps::getShape(const blitz::Array<double,1>& i
 void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   blitz::Array<double,2>& ceps_matrix)
 {
+//  printf("m_mel_scale=%d, m_dct_norm=%d, m_normalize_spectrum=%d, m_rect_filter=%d, m_inverse_filter=%d, m_ssfc_features=%d, m_scfc_features=%d, m_scmc_features=%d\n", m_mel_scale, m_dct_norm, m_normalize_spectrum, m_rect_filter, m_inverse_filter, m_ssfc_features, m_scfc_features, m_scmc_features);
+
   // Get expected dimensionality of output array
   blitz::TinyVector<int,2> feature_shape = bob::ap::Ceps::getShape(input);
   // Check dimensionality of output array

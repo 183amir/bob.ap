@@ -13,7 +13,7 @@
 PyDoc_STRVAR(s_spectrogram_str, BOB_EXT_MODULE_PREFIX ".Spectrogram");
 
 PyDoc_STRVAR(s_spectrogram_doc,
-"Spectrogram(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [f_min=0., [f_max=4000., [pre_emphasis_coeff=0.95, [mel_scale=True, [rect_filter=True, [inverse_filter=True, [normalize_spectrum=True]]]]]]]]]]) -> new Spectrogram\n\
+"Spectrogram(sampling_frequency, [win_length_ms=20., [win_shift_ms=10., [n_filters=24, [f_min=0., [f_max=4000., [pre_emphasis_coeff=0.95, [mel_scale=True, [rect_filter=False, [inverse_filter=False, [normalize_spectrum=False]]]]]]]]]]) -> new Spectrogram\n\
 Spectrogram(other) -> new Spectrogram\n\
 \n\
 Objects of this class, after configuration, can extract the\n\
@@ -144,9 +144,9 @@ static int PyBobApSpectrogram_InitParameters
   double f_max = 4000.;
   double pre_emphasis_coeff = 0.95;
   PyObject* mel_scale = Py_True;
-  PyObject* rect_filter = Py_True;
-  PyObject* inverse_filter = Py_True;
-  PyObject* normalize_spectrum = Py_True;
+  PyObject* rect_filter = Py_False;
+  PyObject* inverse_filter = Py_False;
+  PyObject* normalize_spectrum = Py_False;
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "d|ddndddO", kwlist,
         &sampling_frequency, &win_length_ms, &win_shift_ms,
         &n_filters, &f_min, &f_max, &pre_emphasis_coeff, &mel_scale,

@@ -322,7 +322,7 @@ void bob::ap::Spectrogram::powerSpectrumFFT(blitz::Array<double,1>& x)
   x_half = blitz::abs(complex_half);
   if (m_energy_filter) // Apply the filter bank to the energy
     x_half = blitz::pow2(x_half);
-  if (m_normalize_spectrum) //normalize power spectrum
+  if (m_normalize_spectrum)//normalize power spectrum
     x_half -= blitz::mean(x_half);
 }
 

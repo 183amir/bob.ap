@@ -179,10 +179,10 @@ static int PyBobApCeps_InitParameters
   Py_ssize_t delta_win = 2;
   double pre_emphasis_coeff = 0.95;
   PyObject* mel_scale = Py_True;
-  PyObject* rect_filter = Py_True;
-  PyObject* inverse_filter = Py_True;
-  PyObject* normalize_spectrum = Py_True;
-  PyObject* dct_norm = Py_True;
+  PyObject* rect_filter = Py_False;
+  PyObject* inverse_filter = Py_False;
+  PyObject* normalize_spectrum = Py_False;
+  PyObject* dct_norm = Py_False;
   PyObject* ssfc_features = Py_False;
   PyObject* scfc_features = Py_False;
   PyObject* scmc_features = Py_False;
@@ -198,9 +198,9 @@ static int PyBobApCeps_InitParameters
   bool inverse_filter_ = PyObject_IsTrue(inverse_filter);
   bool normalize_spectrum_ = PyObject_IsTrue(normalize_spectrum);
   bool dct_norm_ = PyObject_IsTrue(dct_norm);
-  bool ssfc_features_ = PyObject_Not(ssfc_features);
-  bool scfc_features_ = PyObject_Not(scfc_features);
-  bool scmc_features_ = PyObject_Not(scmc_features);
+  bool ssfc_features_ = PyObject_IsTrue(ssfc_features);
+  bool scfc_features_ = PyObject_IsTrue(scfc_features);
+  bool scmc_features_ = PyObject_IsTrue(scmc_features);
 
   try {
     self->cxx = new bob::ap::Ceps(sampling_frequency,
