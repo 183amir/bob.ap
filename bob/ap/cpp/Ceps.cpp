@@ -210,7 +210,7 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
       m_cache_frame_d = blitz::pow2(m_cache_frame_d);
       // Then, we can apply the filter and DCT later on
     }
-    // Filter with the triangular filter bank (either in linear or Mel domain)
+    // Filter with triangular or rectangular filter bank (either in linear or Mel domain)
     filterBank(m_cache_frame_d);
 
     // Apply DCT kernel and update the output

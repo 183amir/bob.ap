@@ -252,10 +252,8 @@ void bob::ap::Spectrogram::initCacheFilters()
 
     // if we have a rectangular filter, we do not need to care about slices
     if (m_rect_filter) {
-      // Rectangular filter just have one value for all indexes
-      int len = mi-li+1;
-      double a = 1. / len;
-      filt = 1.-a*(len-1);
+      // Rectangular filter with value=1. for all indexes
+      filt = 1.;
     }
     else {
       // Fill in the left slice of the triangular filter
