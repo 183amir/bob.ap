@@ -362,7 +362,7 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
       blitz::firstIndex ii;
       // m_p_index(i) is the first frequency of the current range
       // as a normalizer, we use the maximum frequency of the current range
-      weights = (m_p_index(i) + ii) / m_p_index(i+2);
+      weights = 1.0*(m_p_index(i) + ii) / m_p_index(i+2); //make sure it's double value
     }
     // apply pre-computed bank filter on the data (which should be power spectrum) and
     // multiply by weights (not eqaul to 1 for SCFC or SCMC features)
