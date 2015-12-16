@@ -142,7 +142,7 @@ blitz::TinyVector<int,2> bob::ap::Ceps::getShape(const blitz::Array<double,1>& i
 void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   blitz::Array<double,2>& ceps_matrix)
 {
-  //printf("m_mel_scale=%d, m_dct_norm=%d, m_normalize_spectrum=%d, m_rect_filter=%d, m_inverse_filter=%d, m_ssfc_features=%d, m_scfc_features=%d, m_scmc_features=%d\n", m_mel_scale, m_dct_norm, m_normalize_spectrum, m_rect_filter, m_inverse_filter, m_ssfc_features, m_scfc_features, m_scmc_features);
+  printf("m_mel_scale=%d, m_dct_norm=%d, m_normalize_spectrum=%d, m_rect_filter=%d, m_inverse_filter=%d, m_ssfc_features=%d, m_scfc_features=%d, m_scmc_features=%d\n", m_mel_scale, m_dct_norm, m_normalize_spectrum, m_rect_filter, m_inverse_filter, m_ssfc_features, m_scfc_features, m_scmc_features);
 
   // Get expected dimensionality of output array
   blitz::TinyVector<int,2> feature_shape = bob::ap::Ceps::getShape(input);
@@ -210,7 +210,13 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
 
     // Apply DCT kernel and update the output
     blitz::Array<double,1> ceps_matrix_row(ceps_matrix(i,r1));
-    applyDct(ceps_matrix_row);
+
+    if (m_scfc_features)
+      // do not apply DCT on SCFC features
+      ceps_matrix_row = m_cache_filters(r1);
+    else
+      applyDct(ceps_matrix_row);
+
   }
 
   //compute the center of the cut-off frequencies

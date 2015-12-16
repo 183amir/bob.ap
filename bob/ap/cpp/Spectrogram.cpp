@@ -199,6 +199,18 @@ void bob::ap::Spectrogram::setRectangularFilter(bool rect_filter)
   initCacheFilterBank();
 }
 
+void bob::ap::Spectrogram::setSCFCFeatures(bool scfc_features)
+{
+  m_scfc_features = scfc_features;
+  initCacheFilters();
+}
+
+void bob::ap::Spectrogram::setSCMCFeatures(bool scmc_features)
+{
+  m_scmc_features = scmc_features;
+  initCacheFilters();
+}
+
 double bob::ap::Spectrogram::herzToMel(double f)
 {
   return (2595.*log10(1+f/700.));
@@ -255,6 +267,7 @@ void bob::ap::Spectrogram::initCacheFilters()
 {
   // Creates the Triangular filter bank
   m_filter_bank.clear();
+  m_filter_weights.clear();
   blitz::firstIndex ii;
   for (int i=0; i<(int)m_n_filters; ++i)
   {
@@ -284,6 +297,19 @@ void bob::ap::Spectrogram::initCacheFilters()
     }
     // Append filter into the filterbank vector
     m_filter_bank.push_back(filt);
+
+    // init the weights used for some features during filtering
+    // create an array of size equal to the current range
+    blitz::Array<double,1> weights(ri-li+1);
+    weights = 1.;
+    // compute normalized frequencies for SSFC or SCMC features computation
+    if (m_scfc_features || m_scmc_features) {
+      // li=m_p_index(i) is the first frequency of the current range
+      // as a normalizer, we use the maximum frequency of the current range
+      weights = 1.0*(li + ii) / ri; //make sure it's double value
+    }
+    // Append current weights to the weights vector
+    m_filter_weights.push_back(weights);
   }
 }
 
@@ -349,36 +375,28 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
 //  for (int i=((int)m_n_filters-1); i>=0; --i)
   for (int i=0; i<(int)m_n_filters; ++i)
   {
+    int first_fr = m_p_index(i);
+    int last_fr = m_p_index(i+2);
     // take the pre-computed range of frequencies corresponding to the bank 'i'
-    blitz::Range slice_range = blitz::Range(m_p_index(i),m_p_index(i+2));
+    blitz::Range slice_range = blitz::Range(first_fr, last_fr);
     // take the slice of data corresponding to those frequencies
     blitz::Array<double,1> data_slice(x(slice_range));
 
-    // create an array of size equal to the current range
-    blitz::Array<double,1> weights(m_p_index(i+2)-m_p_index(i)+1);
-    weights = 1.;
-    // compute normalized frequencies for SSFC or SCMC features computation
-    if (m_scfc_features || m_scmc_features) {
-      blitz::firstIndex ii;
-      // m_p_index(i) is the first frequency of the current range
-      // as a normalizer, we use the maximum frequency of the current range
-      weights = 1.0*(m_p_index(i) + ii) / m_p_index(i+2); //make sure it's double value
-    }
     // apply pre-computed bank filter on the data (which should be power spectrum) and
-    // multiply by weights (not eqaul to 1 for SCFC or SCMC features)
-    //blitz::Array<double,1> filtered_data(x(slice_range));
+    // multiply by pre-computed m_filter_weights[] (equal to 1 except for SCFC or SCMC features)
     data_slice *= m_filter_bank[i];
-    double res = blitz::sum(weights * data_slice);
+    double res = blitz::sum(m_filter_weights[i] * data_slice);
 
     // for SSFC features, divide the result by the sum of filtered magnitude of the power spectrum
     if (m_scfc_features)
       res /= blitz::sum(data_slice);
     // for SCMC features, divide the result by the sum of normalized frequencies
     if (m_scmc_features)
-      res /= blitz::sum(weights);
+      res /= blitz::sum(m_filter_weights[i]);
 
     // store the result in m_cache_filters, which will be later used in the computation pipeline
-    if (m_log_filter) // Take the log of the result
+    if (m_log_filter)
+      // Take the log of the result, i.e., compute log triangular filter bank
       m_cache_filters(i)= (res < m_fb_out_floor ? m_log_fb_out_floor : log(res));
     else
       m_cache_filters(i) = res;

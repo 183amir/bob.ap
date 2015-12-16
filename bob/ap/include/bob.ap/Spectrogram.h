@@ -223,23 +223,20 @@ class Spectrogram: public Energy
      * Subband Spectral Flux Coefficients (SSFC), which measures
      * the frame-by-frame change in the power spectrum.
      */
-    void setSSFCFeatures(bool ssfc_features)
+    virtual void setSSFCFeatures(bool ssfc_features)
     { m_ssfc_features = ssfc_features; }
-
     /**
      * @brief Set to true if you want to compute
      * Spectral Centroid Frequency Coefficients (SCFC), which
      * capture detailed information about subbands similar to formant frequencies.
      */
-    void setSCFCFeatures(bool scfc_features)
-    { m_scfc_features = scfc_features; }
+    virtual void setSCFCFeatures(bool scfc_features);
     /**
      * @brief Set to true if you want to compute
      * Spectral Centroid Magnitude Coefficients (SCMC), which
      * capture detailed information about subbands similar to SCFC features.
      */
-    void setSCMCFeatures(bool scmc_features)
-    { m_scmc_features = scmc_features; }
+    virtual void setSCMCFeatures(bool scmc_features);
 
     /**
      * @brief Sets whether we used the energy or the square root of the energy
@@ -343,6 +340,7 @@ class Spectrogram: public Energy
     blitz::Array<double,1> m_hamming_kernel;
     blitz::Array<int,1> m_p_index;
     std::vector<blitz::Array<double,1> > m_filter_bank;
+    std::vector<blitz::Array<double,1> > m_filter_weights;
     bob::sp::FFT1D m_fft;
 
     mutable blitz::Array<std::complex<double>,1> m_cache_frame_c1;

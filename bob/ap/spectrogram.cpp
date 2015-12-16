@@ -578,14 +578,14 @@ PyDoc_STRVAR(s_ssfc_features_doc,
 "Make true if you want to compute SSFC features"
 );
 
-static PyObject* PyBobApCeps_GetSSFCFeatures
-(PyBobApCepsObject* self, void* /*closure*/) {
+static PyObject* PyBobApSpectrogram_GetSSFCFeatures
+(PyBobApSpectrogramObject* self, void* /*closure*/) {
   if (self->cxx->getSSFCFeatures()) Py_RETURN_TRUE;
   else Py_RETURN_FALSE;
 }
 
-static int PyBobApCeps_SetSSFCFeatures
-(PyBobApCepsObject* self, PyObject* o, void* /*closure*/) {
+static int PyBobApSpectrogram_SetSSFCFeatures
+(PyBobApSpectrogramObject* self, PyObject* o, void* /*closure*/) {
 
   bool b = PyObject_IsTrue(o);
   if (PyErr_Occurred()) return -1;
@@ -611,14 +611,14 @@ PyDoc_STRVAR(s_scfc_features_doc,
 "Make true if you want to compute SCFC features"
 );
 
-static PyObject* PyBobApCeps_GetSCFCFeatures
-(PyBobApCepsObject* self, void* /*closure*/) {
+static PyObject* PyBobApSpectrogram_GetSCFCFeatures
+(PyBobApSpectrogramObject* self, void* /*closure*/) {
   if (self->cxx->getSCFCFeatures()) Py_RETURN_TRUE;
   else Py_RETURN_FALSE;
 }
 
-static int PyBobApCeps_SetSCFCFeatures
-(PyBobApCepsObject* self, PyObject* o, void* /*closure*/) {
+static int PyBobApSpectrogram_SetSCFCFeatures
+(PyBobApSpectrogramObject* self, PyObject* o, void* /*closure*/) {
 
   bool b = PyObject_IsTrue(o);
   if (PyErr_Occurred()) return -1;
@@ -643,14 +643,14 @@ PyDoc_STRVAR(s_scmc_features_doc,
 "Make true if you want to compute SCMC features"
 );
 
-static PyObject* PyBobApCeps_GetSCMCFeatures
-(PyBobApCepsObject* self, void* /*closure*/) {
+static PyObject* PyBobApSpectrogram_GetSCMCFeatures
+(PyBobApSpectrogramObject* self, void* /*closure*/) {
   if (self->cxx->getSCMCFeatures()) Py_RETURN_TRUE;
   else Py_RETURN_FALSE;
 }
 
-static int PyBobApCeps_SetSCMCFeatures
-(PyBobApCepsObject* self, PyObject* o, void* /*closure*/) {
+static int PyBobApSpectrogram_SetSCMCFeatures
+(PyBobApSpectrogramObject* self, PyObject* o, void* /*closure*/) {
 
   bool b = PyObject_IsTrue(o);
   if (PyErr_Occurred()) return -1;
@@ -829,22 +829,22 @@ static PyGetSetDef PyBobApSpectrogram_getseters[] = {
     },
     {
       s_ssfc_features_str,
-      (getter)PyBobApCeps_GetSSFCFeatures,
-      (setter)PyBobApCeps_SetSSFCFeatures,
+      (getter)PyBobApSpectrogram_GetSSFCFeatures,
+      (setter)PyBobApSpectrogram_SetSSFCFeatures,
       s_ssfc_features_doc,
       0
     },
     {
       s_scfc_features_str,
-      (getter)PyBobApCeps_GetSCFCFeatures,
-      (setter)PyBobApCeps_SetSCFCFeatures,
+      (getter)PyBobApSpectrogram_GetSCFCFeatures,
+      (setter)PyBobApSpectrogram_SetSCFCFeatures,
       s_scfc_features_doc,
       0
     },
     {
       s_scmc_features_str,
-      (getter)PyBobApCeps_GetSCMCFeatures,
-      (setter)PyBobApCeps_SetSCMCFeatures,
+      (getter)PyBobApSpectrogram_GetSCMCFeatures,
+      (setter)PyBobApSpectrogram_SetSCMCFeatures,
       s_scmc_features_doc,
       0
     },
