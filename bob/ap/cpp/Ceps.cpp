@@ -21,10 +21,10 @@ bob::ap::Ceps::Ceps(const double sampling_frequency,
     const bool dct_norm, const bool ssfc_features,
     const bool scfc_features, const bool scmc_features):
   bob::ap::Spectrogram(sampling_frequency, win_length_ms, win_shift_ms,
-    n_filters, f_min, f_max, pre_emphasis_coeff, mel_scale, rect_filter, inverse_filter, normalize_spectrum),
+    n_filters, f_min, f_max, pre_emphasis_coeff, mel_scale, rect_filter, inverse_filter,
+    normalize_spectrum, ssfc_features, scfc_features, scmc_features),
   m_n_ceps(n_ceps), m_delta_win(delta_win), m_dct_norm(dct_norm),
-  m_with_energy(false), m_with_delta(false), m_with_delta_delta(false),
-  m_ssfc_features(ssfc_features), m_scfc_features(scfc_features), m_scmc_features(scmc_features)
+  m_with_energy(false), m_with_delta(false), m_with_delta_delta(false)
 {
   setEnergyBands(true);
   initCacheDctKernel();
@@ -35,10 +35,7 @@ bob::ap::Ceps::Ceps(const bob::ap::Ceps& other):
   m_n_ceps(other.m_n_ceps), m_delta_win(other.m_delta_win),
   m_dct_norm(other.m_dct_norm), m_with_energy(other.m_with_energy),
   m_with_delta(other.m_with_delta),
-  m_with_delta_delta(other.m_with_delta_delta),
-  m_ssfc_features(other.m_ssfc_features),
-  m_scfc_features(other.m_scfc_features),
-  m_scmc_features(other.m_scmc_features)
+  m_with_delta_delta(other.m_with_delta_delta)
 {
   initCacheDctKernel();
 }
@@ -55,9 +52,6 @@ bob::ap::Ceps::operator=(const bob::ap::Ceps& other)
     m_with_energy = other.m_with_energy;
     m_with_delta = other.m_with_delta;
     m_with_delta_delta = other.m_with_delta_delta;
-    m_ssfc_features = other.m_ssfc_features;
-    m_scfc_features = other.m_scfc_features;
-    m_scmc_features = other.m_scmc_features;
 
     initCacheDctKernel();
   }
@@ -72,10 +66,7 @@ bool bob::ap::Ceps::operator==(const bob::ap::Ceps& other) const
           m_dct_norm == other.m_dct_norm &&
           m_with_energy == other.m_with_energy &&
           m_with_delta == other.m_with_delta &&
-          m_with_delta_delta == other.m_with_delta_delta &&
-          m_ssfc_features == other.m_ssfc_features &&
-          m_scfc_features == other.m_scfc_features &&
-          m_scmc_features == other.m_scmc_features);
+          m_with_delta_delta == other.m_with_delta_delta);
 }
 
 bool bob::ap::Ceps::operator!=(const bob::ap::Ceps& other) const
@@ -151,7 +142,7 @@ blitz::TinyVector<int,2> bob::ap::Ceps::getShape(const blitz::Array<double,1>& i
 void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   blitz::Array<double,2>& ceps_matrix)
 {
-//  printf("m_mel_scale=%d, m_dct_norm=%d, m_normalize_spectrum=%d, m_rect_filter=%d, m_inverse_filter=%d, m_ssfc_features=%d, m_scfc_features=%d, m_scmc_features=%d\n", m_mel_scale, m_dct_norm, m_normalize_spectrum, m_rect_filter, m_inverse_filter, m_ssfc_features, m_scfc_features, m_scmc_features);
+  //printf("m_mel_scale=%d, m_dct_norm=%d, m_normalize_spectrum=%d, m_rect_filter=%d, m_inverse_filter=%d, m_ssfc_features=%d, m_scfc_features=%d, m_scmc_features=%d\n", m_mel_scale, m_dct_norm, m_normalize_spectrum, m_rect_filter, m_inverse_filter, m_ssfc_features, m_scfc_features, m_scmc_features);
 
   // Get expected dimensionality of output array
   blitz::TinyVector<int,2> feature_shape = bob::ap::Ceps::getShape(input);
@@ -197,6 +188,8 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
     // Apply the Hamming window
     hammingWindow(m_cache_frame_d);
     // Take the power spectrum of the first part of the FFT
+    // Note that after this call, we only operate on the first half of m_cache_frame_d array. The second half is ignored.
+    // powerSpectrumFFT changes first half+1 elements of m_cache_frame_d array
     powerSpectrumFFT(m_cache_frame_d);
 
     if (m_ssfc_features)

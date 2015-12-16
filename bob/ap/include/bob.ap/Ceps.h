@@ -125,21 +125,6 @@ class Ceps: public Spectrogram
      */
     bool getWithDeltaDelta() const
     { return m_with_delta_delta; }
-    /**
-     * @brief Tells whether SSFC features are being computed
-     */
-    bool getSSFCFeatures() const
-    { return m_ssfc_features; }
-    /**
-     * @brief Tells whether SCFC features are being computed
-     */
-    bool getSCFCFeatures() const
-    { return m_scfc_features; }
-    /**
-     * @brief Tells whether SCMC features are being computed
-     */
-    bool getSCMCFeatures() const
-    { return m_scmc_features; }
 
     /**
      * @brief Returns the number of filters to keep
@@ -180,28 +165,6 @@ class Ceps: public Spectrogram
     void setWithDeltaDelta(bool with_delta_delta)
     { if (with_delta_delta) m_with_delta = true;
       m_with_delta_delta = with_delta_delta; }
-    /**
-     * @brief Set to true if you want to compute
-     * Subband Spectral Flux Coefficients (SSFC), which measures
-     * the frame-by-frame change in the power spectrum.
-     */
-    void setSSFCFeatures(bool ssfc_features)
-    { m_ssfc_features = ssfc_features; }
-
-    /**
-     * @brief Set to true if you want to compute
-     * Spectral Centroid Frequency Coefficients (SCFC), which
-     * capture detailed information about subbands similar to formant frequencies.
-     */
-    void setSCFCFeatures(bool scfc_features)
-    { m_scfc_features = scfc_features; }
-    /**
-     * @brief Set to true if you want to compute
-     * Spectral Centroid Magnitude Coefficients (SCMC), which
-     * capture detailed information about subbands similar to SCFC features.
-     */
-    void setSCMCFeatures(bool scmc_features)
-    { m_scmc_features = scmc_features; }
 
   private:
     /**
@@ -241,9 +204,6 @@ class Ceps: public Spectrogram
     bool m_with_energy;
     bool m_with_delta;
     bool m_with_delta_delta;
-    bool m_ssfc_features; //this flag should be true for SSFC features computation
-    bool m_scfc_features; //this flag should be true for SCFC features computation
-    bool m_scmc_features; //this flag should be true for SCMC features computation
 
     blitz::Array<double,2> m_dct_kernel;
 

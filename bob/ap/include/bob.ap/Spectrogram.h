@@ -43,7 +43,9 @@ class Spectrogram: public Energy
       const double win_length_ms=20., const double win_shift_ms=10.,
       const size_t n_filters=24, const double f_min=0.,
       const double f_max=4000., const double pre_emphasis_coeff=0.95,
-      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false, bool normalize_spectrum=false);
+      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false,
+      bool normalize_spectrum=false, const bool ssfc_features=false,
+      const bool scfc_features=false, const bool scmc_features=false);
 
     /**
      * @brief Copy Constructor
@@ -120,6 +122,21 @@ class Spectrogram: public Energy
      */
     bool getNormalizeSpectrum() const
     {return m_normalize_spectrum;}
+    /**
+     * @brief Tells whether SSFC features are being computed
+     */
+    bool getSSFCFeatures() const
+    { return m_ssfc_features; }
+    /**
+     * @brief Tells whether SCFC features are being computed
+     */
+    bool getSCFCFeatures() const
+    { return m_scfc_features; }
+    /**
+     * @brief Tells whether SCMC features are being computed
+     */
+    bool getSCMCFeatures() const
+    { return m_scmc_features; }
     /**
      * @brief Returns the pre-emphasis coefficient.
      */
@@ -201,6 +218,29 @@ class Spectrogram: public Energy
      */
     virtual void setNormalizeSpectrum(bool normalize_spectrum)
     { m_normalize_spectrum = normalize_spectrum; }
+    /**
+     * @brief Set to true if you want to compute
+     * Subband Spectral Flux Coefficients (SSFC), which measures
+     * the frame-by-frame change in the power spectrum.
+     */
+    void setSSFCFeatures(bool ssfc_features)
+    { m_ssfc_features = ssfc_features; }
+
+    /**
+     * @brief Set to true if you want to compute
+     * Spectral Centroid Frequency Coefficients (SCFC), which
+     * capture detailed information about subbands similar to formant frequencies.
+     */
+    void setSCFCFeatures(bool scfc_features)
+    { m_scfc_features = scfc_features; }
+    /**
+     * @brief Set to true if you want to compute
+     * Spectral Centroid Magnitude Coefficients (SCMC), which
+     * capture detailed information about subbands similar to SCFC features.
+     */
+    void setSCMCFeatures(bool scmc_features)
+    { m_scmc_features = scmc_features; }
+
     /**
      * @brief Sets whether we used the energy or the square root of the energy
      */
@@ -296,6 +336,9 @@ class Spectrogram: public Energy
     bool m_rect_filter;
     bool m_inverse_filter;
     bool m_normalize_spectrum;
+    bool m_ssfc_features; //this flag should be true for SSFC features computation
+    bool m_scfc_features; //this flag should be true for SCFC features computation
+    bool m_scmc_features; //this flag should be true for SCMC features computation
 
     blitz::Array<double,1> m_hamming_kernel;
     blitz::Array<int,1> m_p_index;

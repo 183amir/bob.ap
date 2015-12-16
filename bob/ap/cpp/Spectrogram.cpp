@@ -16,13 +16,15 @@ bob::ap::Spectrogram::Spectrogram(const double sampling_frequency,
     const double win_length_ms, const double win_shift_ms,
     const size_t n_filters, const double f_min, const double f_max,
     const double pre_emphasis_coeff, const bool mel_scale,
-    const bool rect_filter, const bool inverse_filter, const bool normalize_spectrum):
+    const bool rect_filter, const bool inverse_filter, const bool normalize_spectrum,
+    const bool ssfc_features, const bool scfc_features, const bool scmc_features):
   bob::ap::Energy(sampling_frequency, win_length_ms, win_shift_ms),
   m_n_filters(n_filters), m_f_min(f_min), m_f_max(f_max),
   m_pre_emphasis_coeff(pre_emphasis_coeff), m_mel_scale(mel_scale),
   m_fb_out_floor(1.), m_energy_filter(false), m_log_filter(true),
   m_energy_bands(false), m_rect_filter(rect_filter), m_inverse_filter(inverse_filter),
-  m_normalize_spectrum(normalize_spectrum), m_fft()
+  m_normalize_spectrum(normalize_spectrum), m_ssfc_features(ssfc_features),
+  m_scfc_features(scfc_features), m_scmc_features(scmc_features), m_fft()
 {
   // Check pre-emphasis coefficient
   if (pre_emphasis_coeff < 0. || pre_emphasis_coeff > 1.) {
@@ -48,7 +50,11 @@ bob::ap::Spectrogram::Spectrogram(const Spectrogram& other):
   m_mel_scale(other.m_mel_scale), m_fb_out_floor(other.m_fb_out_floor),
   m_energy_filter(other.m_energy_filter), m_log_filter(other.m_log_filter),
   m_energy_bands(other.m_energy_bands), m_rect_filter(other.m_rect_filter),
-  m_inverse_filter(other.m_inverse_filter), m_normalize_spectrum(other.m_normalize_spectrum), m_fft(other.m_fft)
+  m_inverse_filter(other.m_inverse_filter),
+  m_normalize_spectrum(other.m_normalize_spectrum),
+  m_ssfc_features(other.m_ssfc_features),
+  m_scfc_features(other.m_scfc_features),
+  m_scmc_features(other.m_scmc_features), m_fft(other.m_fft)
 {
   // Initialization
   initWinLength();
@@ -78,6 +84,9 @@ bob::ap::Spectrogram& bob::ap::Spectrogram::operator=(const bob::ap::Spectrogram
     m_rect_filter = other.m_rect_filter;
     m_inverse_filter = other.m_inverse_filter;
     m_normalize_spectrum = other.m_normalize_spectrum;
+    m_ssfc_features = other.m_ssfc_features;
+    m_scfc_features = other.m_scfc_features;
+    m_scmc_features = other.m_scmc_features;
 
     // Initialization
     initWinLength();
@@ -104,7 +113,10 @@ bool bob::ap::Spectrogram::operator==(const bob::ap::Spectrogram& other) const
           m_energy_bands == other.m_energy_bands &&
           m_rect_filter == other.m_rect_filter &&
           m_normalize_spectrum == other.m_normalize_spectrum &&
-          m_inverse_filter == other.m_inverse_filter);
+          m_inverse_filter == other.m_inverse_filter &&
+          m_ssfc_features == other.m_ssfc_features &&
+          m_scfc_features == other.m_scfc_features &&
+          m_scmc_features == other.m_scmc_features);
 }
 
 bool bob::ap::Spectrogram::operator!=(const bob::ap::Spectrogram& other) const
@@ -311,27 +323,71 @@ void bob::ap::Spectrogram::hammingWindow(blitz::Array<double,1> &data) const
 
 void bob::ap::Spectrogram::powerSpectrumFFT(blitz::Array<double,1>& x)
 {
-  // Apply the FFT
+  // this function, effectivelly, modifies only the first half of the input array 'x'
+  // first, copy the input into a complex container
   m_cache_frame_c1 = bob::core::array::cast<std::complex<double> >(x);
+  // Apply the FFT and store the results in complex m_cache_frame_c2
   m_fft(m_cache_frame_c1, m_cache_frame_c2);
 
   // Take the the power spectrum of the first part of the output of the FFT
+  // This range (half of the original array) is what we work on from no on
   blitz::Range r(0,(int)m_win_size/2);
+  // point (do not copy) to the first half of the original input
   blitz::Array<double,1> x_half(x(r));
+  // point to the first half of the result of FFT
   blitz::Array<std::complex<double>,1> complex_half(m_cache_frame_c2(r));
+  // basically, abs(of complex array) gives us the magnitude of the power spectrum
   x_half = blitz::abs(complex_half);
-  if (m_energy_filter) // Apply the filter bank to the energy
+  if (m_energy_filter) // Energy is basically magnitude in power of 2
     x_half = blitz::pow2(x_half);
-  if (m_normalize_spectrum)//normalize power spectrum
+  if (m_normalize_spectrum) // Normalize power spectrum, if we need the normalized value
     x_half -= blitz::mean(x_half);
 }
 
 void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
 {
-  if (m_log_filter) // Apply the log triangular filter bank
-    logTriangularFilterBank(x);
-  else // Apply the triangular filter ban
-    triangularFilterBank(x);
+//  for (int i=((int)m_n_filters-1); i>=0; --i)
+  for (int i=0; i<(int)m_n_filters; ++i)
+  {
+    // take the pre-computed range of frequencies corresponding to the bank 'i'
+    blitz::Range slice_range = blitz::Range(m_p_index(i),m_p_index(i+2));
+    // take the slice of data corresponding to those frequencies
+    blitz::Array<double,1> data_slice(x(slice_range));
+
+    // create an array of size equal to the current range
+    blitz::Array<double,1> weights(m_p_index(i+2)-m_p_index(i)+1);
+    weights = 1.;
+    // compute normalized frequencies for SSFC or SCMC features computation
+    if (m_scfc_features || m_scmc_features) {
+      blitz::firstIndex ii;
+      // m_p_index(i) is the first frequency of the current range
+      // as a normalizer, we use the maximum frequency of the current range
+      weights = (m_p_index(i) + ii) / m_p_index(i+2);
+    }
+    // apply pre-computed bank filter on the data (which should be power spectrum) and
+    // multiply by weights (not eqaul to 1 for SCFC or SCMC features)
+    //blitz::Array<double,1> filtered_data(x(slice_range));
+    data_slice *= m_filter_bank[i];
+    double res = blitz::sum(weights * data_slice);
+
+    // for SSFC features, divide the result by the sum of filtered magnitude of the power spectrum
+    if (m_scfc_features)
+      res /= blitz::sum(data_slice);
+    // for SCMC features, divide the result by the sum of normalized frequencies
+    if (m_scmc_features)
+      res /= blitz::sum(weights);
+
+    // store the result in m_cache_filters, which will be later used in the computation pipeline
+    if (m_log_filter) // Take the log of the result
+      m_cache_filters(i)= (res < m_fb_out_floor ? m_log_fb_out_floor : log(res));
+    else
+      m_cache_filters(i) = res;
+  }
+
+//  if (m_log_filter) // Apply the log triangular filter bank
+//    logTriangularFilterBank(x);
+//  else // Apply the triangular filter ban
+//    triangularFilterBank(x);
 }
 
 void bob::ap::Spectrogram::logTriangularFilterBank(blitz::Array<double,1>& data) const
@@ -341,8 +397,12 @@ void bob::ap::Spectrogram::logTriangularFilterBank(blitz::Array<double,1>& data)
 //  for (int i=((int)m_n_filters-1); i>=0; --i)
   {
     blitz::Array<double,1> data_slice(data(blitz::Range(m_p_index(i),m_p_index(i+2))));
+
     double res = blitz::sum(data_slice * m_filter_bank[i]);
-    m_cache_filters(i)= (res < m_fb_out_floor ? m_log_fb_out_floor : log(res));
+    if (m_log_filter) // Take the log of the result
+      m_cache_filters(i)= (res < m_fb_out_floor ? m_log_fb_out_floor : log(res));
+    else
+      m_cache_filters(i) = res;
   }
 }
 

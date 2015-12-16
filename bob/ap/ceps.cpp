@@ -422,104 +422,6 @@ static int PyBobApCeps_SetDctNorm
 
 }
 
-PyDoc_STRVAR(s_ssfc_features_str, "ssfc_features");
-PyDoc_STRVAR(s_ssfc_features_doc,
-"Make true if you want to compute SSFC features"
-);
-
-static PyObject* PyBobApCeps_GetSSFCFeatures
-(PyBobApCepsObject* self, void* /*closure*/) {
-  if (self->cxx->getSSFCFeatures()) Py_RETURN_TRUE;
-  else Py_RETURN_FALSE;
-}
-
-static int PyBobApCeps_SetSSFCFeatures
-(PyBobApCepsObject* self, PyObject* o, void* /*closure*/) {
-
-  bool b = PyObject_IsTrue(o);
-  if (PyErr_Occurred()) return -1;
-
-  try {
-    self->cxx->setSSFCFeatures(b);
-  }
-  catch (std::exception& ex) {
-    PyErr_SetString(PyExc_RuntimeError, ex.what());
-    return -1;
-  }
-  catch (...) {
-    PyErr_Format(PyExc_RuntimeError, "cannot reset `ssfc_features' of %s: unknown exception caught", Py_TYPE(self)->tp_name);
-    return -1;
-  }
-
-  return 0;
-
-}
-
-PyDoc_STRVAR(s_scfc_features_str, "scfc_features");
-PyDoc_STRVAR(s_scfc_features_doc,
-"Make true if you want to compute SCFC features"
-);
-
-static PyObject* PyBobApCeps_GetSCFCFeatures
-(PyBobApCepsObject* self, void* /*closure*/) {
-  if (self->cxx->getSCFCFeatures()) Py_RETURN_TRUE;
-  else Py_RETURN_FALSE;
-}
-
-static int PyBobApCeps_SetSCFCFeatures
-(PyBobApCepsObject* self, PyObject* o, void* /*closure*/) {
-
-  bool b = PyObject_IsTrue(o);
-  if (PyErr_Occurred()) return -1;
-
-  try {
-    self->cxx->setSCFCFeatures(b);
-  }
-  catch (std::exception& ex) {
-    PyErr_SetString(PyExc_RuntimeError, ex.what());
-    return -1;
-  }
-  catch (...) {
-    PyErr_Format(PyExc_RuntimeError, "cannot reset `scfc_features' of %s: unknown exception caught", Py_TYPE(self)->tp_name);
-    return -1;
-  }
-
-  return 0;
-}
-
-PyDoc_STRVAR(s_scmc_features_str, "scmc_features");
-PyDoc_STRVAR(s_scmc_features_doc,
-"Make true if you want to compute SCMC features"
-);
-
-static PyObject* PyBobApCeps_GetSCMCFeatures
-(PyBobApCepsObject* self, void* /*closure*/) {
-  if (self->cxx->getSCMCFeatures()) Py_RETURN_TRUE;
-  else Py_RETURN_FALSE;
-}
-
-static int PyBobApCeps_SetSCMCFeatures
-(PyBobApCepsObject* self, PyObject* o, void* /*closure*/) {
-
-  bool b = PyObject_IsTrue(o);
-  if (PyErr_Occurred()) return -1;
-
-  try {
-    self->cxx->setSCMCFeatures(b);
-  }
-  catch (std::exception& ex) {
-    PyErr_SetString(PyExc_RuntimeError, ex.what());
-    return -1;
-  }
-  catch (...) {
-    PyErr_Format(PyExc_RuntimeError, "cannot reset `scmc_features' of %s: unknown exception caught", Py_TYPE(self)->tp_name);
-    return -1;
-  }
-
-  return 0;
-}
-
-
 PyDoc_STRVAR(s_with_energy_str, "with_energy");
 PyDoc_STRVAR(s_with_energy_doc,
 "Tells if we add the energy to the output feature"
@@ -660,27 +562,6 @@ static PyGetSetDef PyBobApCeps_getseters[] = {
       (getter)PyBobApCeps_GetWithDeltaDelta,
       (setter)PyBobApCeps_SetWithDeltaDelta,
       s_with_delta_delta_doc,
-      0
-    },
-    {
-      s_ssfc_features_str,
-      (getter)PyBobApCeps_GetSSFCFeatures,
-      (setter)PyBobApCeps_SetSSFCFeatures,
-      s_ssfc_features_doc,
-      0
-    },
-    {
-      s_scfc_features_str,
-      (getter)PyBobApCeps_GetSCFCFeatures,
-      (setter)PyBobApCeps_SetSCFCFeatures,
-      s_scfc_features_doc,
-      0
-    },
-    {
-      s_scmc_features_str,
-      (getter)PyBobApCeps_GetSCMCFeatures,
-      (setter)PyBobApCeps_SetSCMCFeatures,
-      s_scmc_features_doc,
       0
     },
     {0}  /* Sentinel */
