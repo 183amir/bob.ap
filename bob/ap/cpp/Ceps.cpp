@@ -99,12 +99,21 @@ void bob::ap::Ceps::setDctNorm(bool dct_norm)
 
 void bob::ap::Ceps::initCacheDctKernel()
 {
-  // Dct Kernel initialization
+  // Dct Kernel initialization, we implement DCT-II variant here
   m_dct_kernel.resize(m_n_ceps,m_n_filters);
   blitz::firstIndex i;
   blitz::secondIndex j;
+  // If normalize, use the Matlab-based implementation
   double dct_coeff = m_dct_norm ? (double)sqrt(2./(double)(m_n_filters)) : 1.;
-  m_dct_kernel = dct_coeff * blitz::cos(M_PI*(i+1)*(j+0.5)/(double)(m_n_filters));
+
+  m_dct_kernel = dct_coeff * blitz::cos(M_PI*(i)*(j+0.5)/(double)(m_n_filters));
+
+  // Finish normalization: multiple first row by sqrt(0.5), as per Matlab implementation of DCT-II
+  if (m_dct_norm) {
+    blitz::Array<double,1> firstIndex_coeff (m_n_ceps);
+    firstIndex_coeff = blitz::where(i == 0, sqrt(0.5), 1.); //first element is sqrt(0.5), the rest are 1.
+    m_dct_kernel = firstIndex_coeff(i) * m_dct_kernel(i,j); // elementwise multiplication
+  }
 }
 
 
@@ -142,7 +151,7 @@ blitz::TinyVector<int,2> bob::ap::Ceps::getShape(const blitz::Array<double,1>& i
 void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   blitz::Array<double,2>& ceps_matrix)
 {
-//  printf("m_mel_scale=%d, m_dct_norm=%d, m_normalize_spectrum=%d, m_rect_filter=%d, m_inverse_filter=%d, m_ssfc_features=%d, m_scfc_features=%d, m_scmc_features=%d\n", m_mel_scale, m_dct_norm, m_normalize_spectrum, m_rect_filter, m_inverse_filter, m_ssfc_features, m_scfc_features, m_scmc_features);
+  printf("m_mel_scale=%d, m_dct_norm=%d, m_normalize_spectrum=%d, m_rect_filter=%d, m_inverse_filter=%d, m_ssfc_features=%d, m_scfc_features=%d, m_scmc_features=%d\n", m_mel_scale, m_dct_norm, m_normalize_spectrum, m_rect_filter, m_inverse_filter, m_ssfc_features, m_scfc_features, m_scmc_features);
 
   // Get expected dimensionality of output array
   blitz::TinyVector<int,2> feature_shape = bob::ap::Ceps::getShape(input);
@@ -150,6 +159,7 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
   bob::core::array::assertSameShape(ceps_matrix, feature_shape);
   int n_frames=feature_shape(0);
   int shift_frame=0;
+  double last_frame_elem=0;
 
   // Create the holder for the previous frame and make sure it's the same as the current frame
   // Used by SSFC features computation
@@ -165,7 +175,7 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
     // Init the first frame to the input
     extractNormalizeFrame(input, 0, _prev_frame_d);
     // Apply pre-emphasis
-    pre_emphasis(_prev_frame_d);
+    pre_emphasis(_prev_frame_d, last_frame_elem);
     // Apply the Hamming window
     hammingWindow(_prev_frame_d);
     // Take the power spectrum of the first part of the FFT
@@ -184,7 +194,7 @@ void bob::ap::Ceps::operator()(const blitz::Array<double,1>& input,
       ceps_matrix(i,(int)m_n_ceps) = logEnergy(m_cache_frame_d);
 
     // Apply pre-emphasis
-    pre_emphasis(m_cache_frame_d);
+    pre_emphasis(m_cache_frame_d, last_frame_elem);
     // Apply the Hamming window
     hammingWindow(m_cache_frame_d);
     // Take the power spectrum of the first part of the FFT
@@ -282,8 +292,9 @@ void bob::ap::Ceps::addDerivative(const blitz::Array<double,2>& input, blitz::Ar
     }
   }
   // Sum of the integer squared from 1 to delta_win
-  const double sum = m_delta_win*(m_delta_win+1)*(2*m_delta_win+1)/3;
-  output /= sum;
+  // pavel - remove division for the sake of compitability with Matlab code of RFFC features comparison paper
+  //const double sum = m_delta_win*(m_delta_win+1)*(2*m_delta_win+1)/3;
+  //output /= sum;
 }
 
 /*

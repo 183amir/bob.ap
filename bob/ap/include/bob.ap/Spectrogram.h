@@ -255,7 +255,6 @@ class Spectrogram: public Energy
     virtual void setEnergyBands(bool energy_bands)
     { m_energy_bands = energy_bands; }
 
-
   protected:
     /**
      * @brief Converts a frequency in Herz to the corresponding one in Mel
@@ -269,7 +268,7 @@ class Spectrogram: public Energy
      * @brief Pre-emphasises the signal by applying the first order equation
      * \f$data_{n} := data_{n} − a*data_{n−1}\f$
      */
-    void pre_emphasis(blitz::Array<double,1> &data) const;
+    void pre_emphasis(blitz::Array<double,1> &data, double& last_elem_prev_frame) const;
     /**
      * @brief Applies the Hamming window to the signal
      */

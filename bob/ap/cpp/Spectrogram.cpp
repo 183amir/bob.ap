@@ -38,6 +38,8 @@ bob::ap::Spectrogram::Spectrogram(const double sampling_frequency,
   initWinShift();
 
   // Initializes logarithm of flooring values
+  // pavel - allow computing log for a very small value
+  m_fb_out_floor = std::numeric_limits<float>::epsilon();
   m_log_fb_out_floor = log(m_fb_out_floor);
 
   m_cache_filters.resize(m_n_filters);
@@ -54,7 +56,8 @@ bob::ap::Spectrogram::Spectrogram(const Spectrogram& other):
   m_normalize_spectrum(other.m_normalize_spectrum),
   m_ssfc_features(other.m_ssfc_features),
   m_scfc_features(other.m_scfc_features),
-  m_scmc_features(other.m_scmc_features), m_fft(other.m_fft)
+  m_scmc_features(other.m_scmc_features),
+  m_fft(other.m_fft)
 {
   // Initialization
   initWinLength();
@@ -258,7 +261,8 @@ void bob::ap::Spectrogram::initCachePIndex()
     const double cst_a = (m_win_size/m_sampling_frequency) * (m_f_max-m_f_min)/(double)(m_n_filters+1);
     const double cst_b = (m_win_size/m_sampling_frequency) * m_f_min;
     for (int i=0; i<(int)m_n_filters+2; ++i) {
-      m_p_index(i) = (int)round(cst_a * i + cst_b);
+      // pavel - temporarily change round() to floor() for compatibility
+      m_p_index(i) = (int)floor(cst_a * i + cst_b);
     }
   }
 }
@@ -273,7 +277,10 @@ void bob::ap::Spectrogram::initCacheFilters()
   {
     // Integer indices of the boundary of the triangular filter in the
     // Fourier domain
-    int li = m_p_index(i);
+    int li = m_p_index(i)+1;
+    if (i==0)
+      li = m_p_index(i);
+    //make sure left border of the interval is not-included, except for the first i=0
     int mi = m_p_index(i+1);
     int ri = m_p_index(i+2);
     blitz::Array<double,1> filt(ri-li+1);
@@ -328,16 +335,26 @@ void bob::ap::Spectrogram::initWinSize()
   m_cache_frame_c2.resize(m_win_size);
 }
 
-void bob::ap::Spectrogram::pre_emphasis(blitz::Array<double,1> &data) const
+void bob::ap::Spectrogram::pre_emphasis(blitz::Array<double,1> &data, double& last_elem_prev_frame) const
 {
   if (m_pre_emphasis_coeff != 0.)
   {
+    // remember the last element of the frame that will be needed
+    // to compute emphasis correctly in the next frame
+    // the element is at the end of the m_win_shift, since next frame starts at m_win_shift position
+    double last_element = data((int)m_win_shift-1);
+
     // Pre-emphasise the signal by applying the first order equation
     // \f$data_{n} := data_{n} − a*data_{n−1}\f$
     blitz::Range r0((int)m_win_length-2,0,-1);
     blitz::Range r1((int)m_win_length-1,1,-1);
     data(r1) -= m_pre_emphasis_coeff * data(r0); // Apply first order equation
-    data(0) *= 1. - m_pre_emphasis_coeff; // Update first element
+    // pavel - remove first element update for consistency with Matlab
+//    data(0) *= 1. - m_pre_emphasis_coeff; // Update first element
+    // pavel - use the the last remembered element of the previous frame to update the fist element of this frame
+    data(0) -= m_pre_emphasis_coeff * last_elem_prev_frame; // Update first elementm_last_element
+    // remember the last element of this frame for the next frame
+    last_elem_prev_frame = last_element;
   }
 }
 
@@ -375,7 +392,13 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
 //  for (int i=((int)m_n_filters-1); i>=0; --i)
   for (int i=0; i<(int)m_n_filters; ++i)
   {
-    int first_fr = m_p_index(i);
+
+    // pavel - ensure that we use each frequiency only once!
+    // it means we use interval with non-inclusive left border
+    int first_fr = m_p_index(i)+1;
+    // except for the very first interval, when we start with first (or zeros) m_p_index index.
+    if (i == 0)
+      first_fr = m_p_index(i);
     int last_fr = m_p_index(i+2);
     // take the pre-computed range of frequencies corresponding to the bank 'i'
     blitz::Range slice_range = blitz::Range(first_fr, last_fr);
@@ -397,7 +420,8 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
     // store the result in m_cache_filters, which will be later used in the computation pipeline
     if (m_log_filter)
       // Take the log of the result, i.e., compute log triangular filter bank
-      m_cache_filters(i)= (res < m_fb_out_floor ? m_log_fb_out_floor : log(res));
+      // pavel - log10 is not necessary, it should be log(). log10 is a temporary thing
+      m_cache_filters(i)= (res < m_fb_out_floor ? m_log_fb_out_floor : log10(res));
     else
       m_cache_filters(i) = res;
   }
@@ -446,13 +470,16 @@ void bob::ap::Spectrogram::operator()(const blitz::Array<double,1>& input,
   blitz::Range r1 = blitz::Range(0,m_win_size/2);
   if (m_energy_bands)
     r1 = blitz::Range(0,m_n_filters-1);
+
+  double last_frame_elem=0;
+
   for (int i=0; i<n_frames; ++i)
   {
     // Extract and normalize frame
     extractNormalizeFrame(input, i, m_cache_frame_d);
 
     // Apply pre-emphasis
-    pre_emphasis(m_cache_frame_d);
+    pre_emphasis(m_cache_frame_d, last_frame_elem);
     // Apply the Hamming window
     hammingWindow(m_cache_frame_d);
     // Take the power spectrum of the first part of the FFT

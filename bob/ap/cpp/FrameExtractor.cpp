@@ -2,7 +2,8 @@
  * @date Wed Jan 11:09:30 2013 +0200
  * @author Elie Khoury <Elie.Khoury@idiap.ch>
  * @author Laurent El Shafey <Laurent.El-Shafey@idiap.ch>
- *
+ * @author Pavel Korshunov <Pavel.Korshunov@idiap.ch>
+*
  * Copyright (C) Idiap Research Institute, Martigny, Switzerland
  */
 
@@ -109,8 +110,12 @@ void bob::ap::FrameExtractor::extractNormalizeFrame(const blitz::Array<double,1>
   blitz::Range rf(0,(int)m_win_length-1);
   blitz::Range ri(i*(int)m_win_shift,i*(int)m_win_shift+(int)m_win_length-1);
   frame_d(rf) = input(ri);
+
+  //normalize by dividing by maximum possible range
+  double max_range = pow(2.0, m_sampling_frequency/1000)/2.0 - 0.5;
+  frame_d /= max_range;
   // Subtract mean value
-  frame_d -= blitz::mean(frame_d);
+  // frame_d -= blitz::mean(frame_d);
 }
 
 

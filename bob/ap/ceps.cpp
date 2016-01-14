@@ -1,5 +1,6 @@
 /**
  * @author Andre Anjos <andre.anjos@idiap.ch>
+ * @author Pavel Korshunov <Pavel.Korshunov@idiap.ch>
  * @date Thu  6 Feb 09:00:05 2014
  *
  * @brief Bindings to the base class bob::ap::Ceps

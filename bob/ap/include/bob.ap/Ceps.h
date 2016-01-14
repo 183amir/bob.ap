@@ -1,6 +1,7 @@
 /**
  * @author Elie Khoury <Elie.Khoury@idiap.ch>
  * @author Laurent El Shafey <Laurent.El-Shafey@idiap.ch>
+ * @author Pavel Korshunov <Pavel.Korshunov@idiap.ch>
  * @date Wed Jan 11:10:20 2013 +0200
  *
  * @brief Implement Linear and Mel Frequency Cepstral Coefficients
