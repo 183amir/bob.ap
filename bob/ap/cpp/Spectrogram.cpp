@@ -277,12 +277,12 @@ void bob::ap::Spectrogram::initCacheFilters()
   {
     // Integer indices of the boundary of the triangular filter in the
     // Fourier domain
+    //make sure the left border of the interval is not-included, except for the first i=0
     int li = m_p_index(i)+1;
-    if (i==0)
-      li = m_p_index(i);
-    //make sure left border of the interval is not-included, except for the first i=0
     int mi = m_p_index(i+1);
     int ri = m_p_index(i+2);
+    if (i == 0 || (mi-li == 1)) //first elem or left and middle element are only 1 step apart
+      li = m_p_index(i);
     blitz::Array<double,1> filt(ri-li+1);
 
     // if we have a rectangular filter, we do not need to care about slices
