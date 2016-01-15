@@ -397,8 +397,9 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
     // it means we use interval with non-inclusive left border
     int first_fr = m_p_index(i)+1;
     // except for the very first interval, when we start with first (or zeros) m_p_index index.
-    if (i == 0)
-      first_fr = m_p_index(i);
+    // or when first and middle index are the same
+    if (i == 0 || first_fr == m_p_index(i+1))
+      first_fr--;
     int last_fr = m_p_index(i+2);
     // take the pre-computed range of frequencies corresponding to the bank 'i'
     blitz::Range slice_range = blitz::Range(first_fr, last_fr);
