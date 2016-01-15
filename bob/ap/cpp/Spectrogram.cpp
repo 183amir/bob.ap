@@ -281,8 +281,8 @@ void bob::ap::Spectrogram::initCacheFilters()
     int li = m_p_index(i)+1;
     int mi = m_p_index(i+1);
     int ri = m_p_index(i+2);
-    if (i == 0 || (mi-li == 1)) //first elem or left and middle element are only 1 step apart
-      li = m_p_index(i);
+    if (i == 0 || (mi-li == 0)) //first elem or left and middle elements are the same
+      li--;
     blitz::Array<double,1> filt(ri-li+1);
 
     // if we have a rectangular filter, we do not need to care about slices
