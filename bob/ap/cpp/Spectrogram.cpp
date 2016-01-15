@@ -196,6 +196,12 @@ void bob::ap::Spectrogram::setMelScale(bool mel_scale)
   initCacheFilterBank();
 }
 
+void bob::ap::Spectrogram::setInverseFilter(bool inverse_filter)
+{
+  m_inverse_filter = inverse_filter;
+  initCacheFilterBank();
+}
+
 void bob::ap::Spectrogram::setRectangularFilter(bool rect_filter)
 {
   m_rect_filter = rect_filter;
@@ -251,8 +257,13 @@ void bob::ap::Spectrogram::initCachePIndex()
     for (int i=0; i<(int)m_n_filters+2; ++i) {
       double alpha = i/ (double)(m_n_filters+1);
       double f = melToHerz(m_min * (1-alpha) + m_max * alpha);
-      double factor = f / m_sampling_frequency;
-      m_p_index(i)=(int)round(m_win_size * factor);
+      if (m_inverse_filter) // for computing IMFCC features
+        // larger triangles are at the beginning and narroer triangles towards the end
+        m_p_index(m_n_filters+1-i)=(int)round(m_win_size * (m_f_max - f) / m_sampling_frequency); // from max to min
+      else {
+        double factor = f / m_sampling_frequency;
+        m_p_index(i)=(int)round(m_win_size * factor); // normal Mel-filter from min to max
+      }
     }
   }
   else
@@ -312,8 +323,8 @@ void bob::ap::Spectrogram::initCacheFilters()
     // compute normalized frequencies for SSFC or SCMC features computation
     if (m_scfc_features || m_scmc_features) {
       // li=m_p_index(i) is the first frequency of the current range
-      // as a normalizer, we use the maximum frequency of the current range
-      weights = 1.0*(li + ii) / ri; //make sure it's double value
+      // as a normalizer, we use the maximum possible frequency of the sample
+      weights = 1.0*(li + ii) / m_f_max; //make sure it's double value
     }
     // Append current weights to the weights vector
     m_filter_weights.push_back(weights);
@@ -383,8 +394,13 @@ void bob::ap::Spectrogram::powerSpectrumFFT(blitz::Array<double,1>& x)
   x_half = blitz::abs(complex_half);
   if (m_energy_filter) // Energy is basically magnitude in power of 2
     x_half = blitz::pow2(x_half);
-  if (m_normalize_spectrum) // Normalize power spectrum, if we need the normalized value
-    x_half -= blitz::mean(x_half);
+  if (m_normalize_spectrum) {// Normalize power spectrum, if we need the normalized value
+    //    x_half -= blitz::mean(x_half); // this is an older implementation but it may give similar results
+    // it should be maximum of the FFT over the whole signal but we have access only to one frame at a time
+    double max_fft = blitz::max(x_half);
+    if (max_fft > std::numeric_limits<float>::epsilon())
+      x_half /= max_fft;
+  }
 }
 
 void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)

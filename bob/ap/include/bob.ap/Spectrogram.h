@@ -211,8 +211,7 @@ class Spectrogram: public Energy
     /**
      * @brief Sets whether to apply the filter in the inversed order, i.e., from high frequencies to low.
      */
-    virtual void setInverseFilter(bool inverse_filter)
-    { m_inverse_filter = inverse_filter; }
+    virtual void setInverseFilter(bool inverse_filter);
     /**
      * @brief Sets whether to normalize the power spectrum of the signal.
      */
