@@ -42,9 +42,9 @@ class Spectrogram: public Energy
     Spectrogram(const double sampling_frequency,
       const double win_length_ms=20., const double win_shift_ms=10.,
       const size_t n_filters=24, const double f_min=0.,
-      const double f_max=4000., const double pre_emphasis_coeff=0.95,
-      bool mel_scale=true, bool rect_filter=false, bool inverse_filter=false,
-      bool normalize_spectrum=false, const bool ssfc_features=false,
+      const double f_max=8000., const double pre_emphasis_coeff=0.95,
+      const bool mel_scale=true, const bool rect_filter=false, const bool inverse_filter=false,
+      const bool normalize_spectrum=false, const bool ssfc_features=false,
       const bool scfc_features=false, const bool scmc_features=false);
 
     /**
@@ -323,17 +323,17 @@ class Spectrogram: public Energy
     double m_f_max;
     double m_pre_emphasis_coeff;
     bool m_mel_scale;
-    double m_fb_out_floor;
-    bool m_energy_filter;
-    bool m_log_filter;
-    bool m_energy_bands;
-    double m_log_fb_out_floor;
     bool m_rect_filter;
     bool m_inverse_filter;
     bool m_normalize_spectrum;
     bool m_ssfc_features; //this flag should be true for SSFC features computation
     bool m_scfc_features; //this flag should be true for SCFC features computation
     bool m_scmc_features; //this flag should be true for SCMC features computation
+    double m_fb_out_floor;
+    bool m_energy_filter;
+    bool m_log_filter;
+    bool m_energy_bands;
+    double m_log_fb_out_floor;
 
     blitz::Array<double,1> m_hamming_kernel;
     blitz::Array<int,1> m_p_index;

@@ -21,10 +21,11 @@ bob::ap::Spectrogram::Spectrogram(const double sampling_frequency,
   bob::ap::Energy(sampling_frequency, win_length_ms, win_shift_ms),
   m_n_filters(n_filters), m_f_min(f_min), m_f_max(f_max),
   m_pre_emphasis_coeff(pre_emphasis_coeff), m_mel_scale(mel_scale),
-  m_fb_out_floor(1.), m_energy_filter(false), m_log_filter(true),
-  m_energy_bands(false), m_rect_filter(rect_filter), m_inverse_filter(inverse_filter),
+  m_rect_filter(rect_filter), m_inverse_filter(inverse_filter),
   m_normalize_spectrum(normalize_spectrum), m_ssfc_features(ssfc_features),
-  m_scfc_features(scfc_features), m_scmc_features(scmc_features), m_fft()
+  m_scfc_features(scfc_features), m_scmc_features(scmc_features),
+  m_fb_out_floor(1.), m_energy_filter(false), m_log_filter(true),
+  m_energy_bands(false), m_fft()
 {
   // Check pre-emphasis coefficient
   if (pre_emphasis_coeff < 0. || pre_emphasis_coeff > 1.) {
@@ -49,14 +50,16 @@ bob::ap::Spectrogram::Spectrogram(const Spectrogram& other):
   bob::ap::Energy(other), m_n_filters(other.m_n_filters),
   m_f_min(other.m_f_min), m_f_max(other.m_f_max),
   m_pre_emphasis_coeff(other.m_pre_emphasis_coeff),
-  m_mel_scale(other.m_mel_scale), m_fb_out_floor(other.m_fb_out_floor),
-  m_energy_filter(other.m_energy_filter), m_log_filter(other.m_log_filter),
-  m_energy_bands(other.m_energy_bands), m_rect_filter(other.m_rect_filter),
+  m_mel_scale(other.m_mel_scale), m_rect_filter(other.m_rect_filter),
   m_inverse_filter(other.m_inverse_filter),
   m_normalize_spectrum(other.m_normalize_spectrum),
   m_ssfc_features(other.m_ssfc_features),
   m_scfc_features(other.m_scfc_features),
   m_scmc_features(other.m_scmc_features),
+  m_fb_out_floor(other.m_fb_out_floor),
+  m_energy_filter(other.m_energy_filter),
+  m_log_filter(other.m_log_filter),
+  m_energy_bands(other.m_energy_bands),
   m_fft(other.m_fft)
 {
   // Initialization
@@ -79,17 +82,17 @@ bob::ap::Spectrogram& bob::ap::Spectrogram::operator=(const bob::ap::Spectrogram
     m_f_max = other.m_f_max;
     m_pre_emphasis_coeff = other.m_pre_emphasis_coeff;
     m_mel_scale = other.m_mel_scale;
-    m_fb_out_floor = other.m_fb_out_floor;
-    m_energy_filter = other.m_energy_filter;
-    m_log_filter = other.m_log_filter;
-    m_energy_bands = other.m_energy_bands;
-    m_fft = other.m_fft;
     m_rect_filter = other.m_rect_filter;
     m_inverse_filter = other.m_inverse_filter;
     m_normalize_spectrum = other.m_normalize_spectrum;
     m_ssfc_features = other.m_ssfc_features;
     m_scfc_features = other.m_scfc_features;
     m_scmc_features = other.m_scmc_features;
+    m_fb_out_floor = other.m_fb_out_floor;
+    m_energy_filter = other.m_energy_filter;
+    m_log_filter = other.m_log_filter;
+    m_energy_bands = other.m_energy_bands;
+    m_fft = other.m_fft;
 
     // Initialization
     initWinLength();
@@ -110,16 +113,16 @@ bool bob::ap::Spectrogram::operator==(const bob::ap::Spectrogram& other) const
           m_f_max == other.m_f_max &&
           m_pre_emphasis_coeff == other.m_pre_emphasis_coeff &&
           m_mel_scale == other.m_mel_scale &&
-          m_fb_out_floor == other.m_fb_out_floor &&
-          m_energy_filter == other.m_energy_filter &&
-          m_log_filter == other.m_log_filter &&
-          m_energy_bands == other.m_energy_bands &&
           m_rect_filter == other.m_rect_filter &&
           m_normalize_spectrum == other.m_normalize_spectrum &&
           m_inverse_filter == other.m_inverse_filter &&
           m_ssfc_features == other.m_ssfc_features &&
           m_scfc_features == other.m_scfc_features &&
-          m_scmc_features == other.m_scmc_features);
+          m_scmc_features == other.m_scmc_features &&
+          m_fb_out_floor == other.m_fb_out_floor &&
+          m_energy_filter == other.m_energy_filter &&
+          m_log_filter == other.m_log_filter &&
+          m_energy_bands == other.m_energy_bands);
 }
 
 bool bob::ap::Spectrogram::operator!=(const bob::ap::Spectrogram& other) const
@@ -257,8 +260,7 @@ void bob::ap::Spectrogram::initCachePIndex()
     for (int i=0; i<(int)m_n_filters+2; ++i) {
       double alpha = i/ (double)(m_n_filters+1);
       double f = melToHerz(m_min * (1-alpha) + m_max * alpha);
-      if (m_inverse_filter) // for computing IMFCC features
-        // larger triangles are at the beginning and narroer triangles towards the end
+      if (m_inverse_filter)
         m_p_index(m_n_filters+1-i)=(int)round(m_win_size * (m_f_max - f) / m_sampling_frequency); // from max to min
       else {
         double factor = f / m_sampling_frequency;

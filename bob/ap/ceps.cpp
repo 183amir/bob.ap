@@ -176,7 +176,7 @@ static int PyBobApCeps_InitParameters
   Py_ssize_t n_filters = 24;
   Py_ssize_t n_ceps = 19;
   double f_min = 0.;
-  double f_max = 4000.;
+  double f_max = 8000.;
   Py_ssize_t delta_win = 2;
   double pre_emphasis_coeff = 0.95;
   PyObject* mel_scale = Py_True;
@@ -187,7 +187,7 @@ static int PyBobApCeps_InitParameters
   PyObject* ssfc_features = Py_False;
   PyObject* scfc_features = Py_False;
   PyObject* scmc_features = Py_False;
-  if (!PyArg_ParseTupleAndKeywords(args, kwds, "d|ddnnddndOO", kwlist,
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "d|ddnnddndOOOOOOOO", kwlist,
         &sampling_frequency, &win_length_ms, &win_shift_ms, &n_filters,
         &n_ceps, &f_min, &f_max, &delta_win, &pre_emphasis_coeff,
         &mel_scale, &rect_filter, &inverse_filter, &normalize_spectrum, &dct_norm,
