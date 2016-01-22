@@ -324,9 +324,10 @@ void bob::ap::Spectrogram::initCacheFilters()
     weights = 1.;
     // compute normalized frequencies for SSFC or SCMC features computation
     if (m_scfc_features || m_scmc_features) {
-      // li=m_p_index(i) is the first frequency of the current range
-      // as a normalizer, we use the maximum possible frequency of the sample
-      weights = 1.0*(li + ii) / m_f_max; //make sure it's double value
+      // li=m_p_index(i) is the first adjusted frequency of the current range
+      // as a normalizer, we use the maximum adjusted frequency value
+      // so, we divide by (m_win_size/m_sampling_frequency) * (m_f_max-m_f_min)
+      weights = 1.0*(li + ii) / ((m_win_size/m_sampling_frequency) * (m_f_max-m_f_min)); //make sure it's double value
     }
     // Append current weights to the weights vector
     m_filter_weights.push_back(weights);
