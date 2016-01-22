@@ -40,8 +40,8 @@ bob::ap::Spectrogram::Spectrogram(const double sampling_frequency,
 
   // Initializes logarithm of flooring values
   // pavel - allow computing log for a very small value
-  m_fb_out_floor = std::numeric_limits<float>::epsilon();
-  m_log_fb_out_floor = log(m_fb_out_floor);
+  m_fb_out_floor = std::numeric_limits<double>::epsilon();
+  m_log_fb_out_floor = log10(m_fb_out_floor);
 
   m_cache_filters.resize(m_n_filters);
 }
@@ -67,7 +67,7 @@ bob::ap::Spectrogram::Spectrogram(const Spectrogram& other):
   initWinShift();
 
   // Initializes logarithm of flooring values
-  m_log_fb_out_floor = log(m_fb_out_floor);
+  m_log_fb_out_floor = log10(m_fb_out_floor);
 
   m_cache_filters.resize(m_n_filters);
 }
@@ -99,7 +99,7 @@ bob::ap::Spectrogram& bob::ap::Spectrogram::operator=(const bob::ap::Spectrogram
     initWinShift();
 
     // Initializes logarithm of flooring values
-    m_log_fb_out_floor = log(m_fb_out_floor);
+    m_log_fb_out_floor = log10(m_fb_out_floor);
 
     m_cache_filters.resize(m_n_filters);
   }
@@ -401,7 +401,7 @@ void bob::ap::Spectrogram::powerSpectrumFFT(blitz::Array<double,1>& x)
     //    x_half -= blitz::mean(x_half); // this is an older implementation but it may give similar results
     // it should be maximum of the FFT over the whole signal but we have access only to one frame at a time
     double max_fft = blitz::max(x_half);
-    if (max_fft > std::numeric_limits<float>::epsilon())
+    if (max_fft > std::numeric_limits<double>::epsilon())
       x_half /= max_fft;
   }
 }
