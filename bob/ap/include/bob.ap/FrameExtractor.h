@@ -114,6 +114,7 @@ class FrameExtractor
     virtual void initWinSize();
     virtual void initWinLength();
     virtual void initWinShift();
+    virtual void initMaxRange();
 
     double m_sampling_frequency; ///< The sampling frequency
     double m_win_length_ms; ///< The window length in miliseconds
