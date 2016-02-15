@@ -88,6 +88,9 @@ void bob::ap::FrameExtractor::initWinLength()
   if (m_win_length == 0)
     throw std::runtime_error("The length of the window is 0. You should use a larger sampling rate or window length in miliseconds");
   initWinSize();
+
+  // here, we also update m_max_range, since m_sampling_frequency may have changed or set inside an Init()
+  m_max_range = pow(2.0, m_sampling_frequency/1000)/2.0 - 0.5;
 }
 
 void bob::ap::FrameExtractor::initWinShift()
@@ -111,9 +114,8 @@ void bob::ap::FrameExtractor::extractNormalizeFrame(const blitz::Array<double,1>
   blitz::Range ri(i*(int)m_win_shift,i*(int)m_win_shift+(int)m_win_length-1);
   frame_d(rf) = input(ri);
 
-  //normalize by dividing by maximum possible range
-  double max_range = pow(2.0, m_sampling_frequency/1000)/2.0 - 0.5;
-  frame_d /= max_range;
+  //normalize by dividing by maximum possible range, which is set in initWinLength()
+  frame_d /= m_max_range;
   // Subtract mean value
   // frame_d -= blitz::mean(frame_d);
 }

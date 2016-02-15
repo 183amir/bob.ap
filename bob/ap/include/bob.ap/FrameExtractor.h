@@ -121,6 +121,7 @@ class FrameExtractor
     double m_win_shift_ms;
     size_t m_win_shift;
     size_t m_win_size;
+    double m_max_range; //half of the maximum possible dynamic range of the original signal (for 16 bits, it is 32768)
 
     mutable blitz::Array<double,1> m_cache_frame_d;
 };
