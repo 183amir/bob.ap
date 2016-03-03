@@ -260,12 +260,14 @@ void bob::ap::Spectrogram::initCachePIndex()
     for (int i=0; i<(int)m_n_filters+2; ++i) {
       double alpha = i/ (double)(m_n_filters+1);
       double f = melToHerz(m_min * (1-alpha) + m_max * alpha);
-      if (m_inverse_filter)
-        m_p_index(m_n_filters+1-i)=(int)round(m_win_size * (m_f_max - f) / m_sampling_frequency); // from max to min
-      else {
+//      if (m_inverse_filter)
+//        m_p_index(m_n_filters+1-i)=(int)round(m_win_size * (m_f_max - f) / m_sampling_frequency); // from max to min
+//      else {
         double factor = f / m_sampling_frequency;
-        m_p_index(i)=(int)round(m_win_size * factor); // normal Mel-filter from min to max
-      }
+      // pavel - use double values instead of integers for better precision
+      // m_p_index(i)=(int)round(m_win_size * factor); // normal Mel-filter from min to max
+        m_p_index(i)=m_win_size * factor; // normal Mel-filter from min to max
+//      }
     }
   }
   else
@@ -275,7 +277,9 @@ void bob::ap::Spectrogram::initCachePIndex()
     const double cst_b = (m_win_size/m_sampling_frequency) * m_f_min;
     for (int i=0; i<(int)m_n_filters+2; ++i) {
       // pavel - temporarily change round() to floor() for compatibility
-      m_p_index(i) = (int)floor(cst_a * i + cst_b);
+//      m_p_index(i) = (int)floor(cst_a * i + cst_b);
+      // use double values instead of integers for better precision
+      m_p_index(i) = cst_a * i + cst_b;
     }
   }
 }
@@ -291,9 +295,9 @@ void bob::ap::Spectrogram::initCacheFilters()
     // Integer indices of the boundary of the triangular filter in the
     // Fourier domain
     //make sure the left border of the interval is not-included, except for the first i=0
-    int li = m_p_index(i)+1;
-    int mi = m_p_index(i+1);
-    int ri = m_p_index(i+2);
+    int li = (int)floor(m_p_index(i)+1);
+    int mi = (int)floor(m_p_index(i+1));
+    int ri = (int)floor(m_p_index(i+2));
     if (i == 0 || (mi-li == 0)) //first elem or left and middle elements are the same
       li--;
     blitz::Array<double,1> filt(ri-li+1);
@@ -304,16 +308,21 @@ void bob::ap::Spectrogram::initCacheFilters()
       filt = 1.;
     }
     else {
+
       // Fill in the left slice of the triangular filter
-      blitz::Array<double,1> filt_p1(filt(blitz::Range(0,mi-li-1)));
+      blitz::Array<double,1> filt_p1(filt(blitz::Range(0,mi-li)));
       int len = mi-li+1;
       double a = 1. / len;
       filt_p1 = 1.-a*(len-1-ii);
+      double denom = m_p_index(i+1)-m_p_index(i);
+      filt_p1 = (ii+li-m_p_index(i)) / denom;
       // Fill in the right slice of the triangular filter
-      blitz::Array<double,1> filt_p2(filt(blitz::Range(mi-li,ri-li)));
+      blitz::Array<double,1> filt_p2(filt(blitz::Range(mi-li+1,ri-li)));
       len = ri-mi+1;
       a = 1. / len;
       filt_p2 = 1.-a*ii;
+      denom = m_p_index(i+2)-m_p_index(i+1);
+      filt_p2 = (m_p_index(i+2)-(ii+mi+1)) / denom;
     }
     // Append filter into the filterbank vector
     m_filter_bank.push_back(filt);
@@ -409,7 +418,14 @@ void bob::ap::Spectrogram::powerSpectrumFFT(blitz::Array<double,1>& x)
 
 void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
 {
-//  for (int i=((int)m_n_filters-1); i>=0; --i)
+  // first, create an array that we operate on (half of the power spectrum)
+  blitz::Array<double,1> x_half(x(blitz::Range(0,(int)m_win_size/2)));
+
+  // apply a reversed filters to the data (e.g., IMFCC-inversed of MFCC). The easiest way is to
+  // reverse the order of the data, while keeping everything, including filter banks, intact
+  if (m_inverse_filter)
+    x_half.reverseSelf(blitz::firstDim); //reverse only the first half of the power spectrum, since the other half is ignored anyway
+
   for (int i=0; i<(int)m_n_filters; ++i)
   {
 
@@ -424,16 +440,17 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
     // take the pre-computed range of frequencies corresponding to the bank 'i'
     blitz::Range slice_range = blitz::Range(first_fr, last_fr);
     // take the slice of data corresponding to those frequencies
-    blitz::Array<double,1> data_slice(x(slice_range));
+    blitz::Array<double,1> data_slice(x_half(slice_range));
 
     // apply pre-computed bank filter on the data (which should be power spectrum) and
     // multiply by pre-computed m_filter_weights[] (equal to 1 except for SCFC or SCMC features)
-    data_slice *= m_filter_bank[i];
-    double res = blitz::sum(m_filter_weights[i] * data_slice);
+    // carefull not to modify data_slice, since it is just a range of the input x vector
+    // and we have overlapping windows here, so we should not change the input x
+    double res = blitz::sum(m_filter_weights[i] * data_slice * m_filter_bank[i]);
 
     // for SSFC features, divide the result by the sum of filtered magnitude of the power spectrum
     if (m_scfc_features)
-      res /= blitz::sum(data_slice);
+      res /= blitz::sum(data_slice * m_filter_bank[i]);
     // for SCMC features, divide the result by the sum of normalized frequencies
     if (m_scmc_features)
       res /= blitz::sum(m_filter_weights[i]);
@@ -447,35 +464,6 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
       m_cache_filters(i) = res;
   }
 
-//  if (m_log_filter) // Apply the log triangular filter bank
-//    logTriangularFilterBank(x);
-//  else // Apply the triangular filter ban
-//    triangularFilterBank(x);
-}
-
-void bob::ap::Spectrogram::logTriangularFilterBank(blitz::Array<double,1>& data) const
-{
-
-  for (int i=0; i<(int)m_n_filters; ++i)
-//  for (int i=((int)m_n_filters-1); i>=0; --i)
-  {
-    blitz::Array<double,1> data_slice(data(blitz::Range(m_p_index(i),m_p_index(i+2))));
-
-    double res = blitz::sum(data_slice * m_filter_bank[i]);
-    if (m_log_filter) // Take the log of the result
-      m_cache_filters(i)= (res < m_fb_out_floor ? m_log_fb_out_floor : log(res));
-    else
-      m_cache_filters(i) = res;
-  }
-}
-
-void bob::ap::Spectrogram::triangularFilterBank(blitz::Array<double,1>& data) const
-{
-  for (int i=0; i<(int)m_n_filters; ++i)
-  {
-    blitz::Array<double,1> data_slice(data(blitz::Range(m_p_index(i),m_p_index(i+2))));
-    m_cache_filters(i) = blitz::sum(data_slice * m_filter_bank[i]);
-  }
 }
 
 void bob::ap::Spectrogram::operator()(const blitz::Array<double,1>& input,

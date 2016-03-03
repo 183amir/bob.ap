@@ -278,19 +278,9 @@ class Spectrogram: public Energy
      */
     void powerSpectrumFFT(blitz::Array<double,1>& x);
     /**
-     * @brief Applies the triangular filter bank
+     * @brief Applies the pre-computed filter bank (triangular or rectangular)
      */
     void filterBank(blitz::Array<double,1>& x);
-    /**
-     * @brief Applies the triangular filter bank to the input array and
-     * returns the logarithm of the magnitude in each band.
-     */
-    void logTriangularFilterBank(blitz::Array<double,1>& data) const;
-    /**
-     * @brief Applies the triangular filter bank to the input array and
-     * returns the magnitude in each band.
-     */
-    void triangularFilterBank(blitz::Array<double,1>& data) const;
 
 
     virtual void initWinLength();
@@ -336,7 +326,7 @@ class Spectrogram: public Energy
     double m_log_fb_out_floor;
 
     blitz::Array<double,1> m_hamming_kernel;
-    blitz::Array<int,1> m_p_index;
+    blitz::Array<double,1> m_p_index;
     std::vector<blitz::Array<double,1> > m_filter_bank;
     std::vector<blitz::Array<double,1> > m_filter_weights;
     bob::sp::FFT1D m_fft;
