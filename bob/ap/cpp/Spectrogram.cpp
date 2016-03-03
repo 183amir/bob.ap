@@ -298,7 +298,7 @@ void bob::ap::Spectrogram::initCacheFilters()
     int li = (int)floor(m_p_index(i)+1);
     int mi = (int)floor(m_p_index(i+1));
     int ri = (int)floor(m_p_index(i+2));
-    if (i == 0 || (mi-li == 0)) //first elem or left and middle elements are the same
+    if (i == 0 || (ri-li == 0)) //first elem or left and last elements are the same
       li--;
     blitz::Array<double,1> filt(ri-li+1);
 
@@ -311,16 +311,10 @@ void bob::ap::Spectrogram::initCacheFilters()
 
       // Fill in the left slice of the triangular filter
       blitz::Array<double,1> filt_p1(filt(blitz::Range(0,mi-li)));
-      int len = mi-li+1;
-      double a = 1. / len;
-      filt_p1 = 1.-a*(len-1-ii);
       double denom = m_p_index(i+1)-m_p_index(i);
       filt_p1 = (ii+li-m_p_index(i)) / denom;
       // Fill in the right slice of the triangular filter
       blitz::Array<double,1> filt_p2(filt(blitz::Range(mi-li+1,ri-li)));
-      len = ri-mi+1;
-      a = 1. / len;
-      filt_p2 = 1.-a*ii;
       denom = m_p_index(i+2)-m_p_index(i+1);
       filt_p2 = (m_p_index(i+2)-(ii+mi+1)) / denom;
     }
@@ -431,12 +425,12 @@ void bob::ap::Spectrogram::filterBank(blitz::Array<double,1>& x)
 
     // pavel - ensure that we use each frequiency only once!
     // it means we use interval with non-inclusive left border
-    int first_fr = m_p_index(i)+1;
+    int first_fr = (int)floor(m_p_index(i)+1);
+    int last_fr = (int)floor(m_p_index(i+2));
     // except for the very first interval, when we start with first (or zeros) m_p_index index.
-    // or when first and middle index are the same
-    if (i == 0 || first_fr == m_p_index(i+1))
+    // or when first and last index are the same
+    if (i == 0 || first_fr == last_fr)
       first_fr--;
-    int last_fr = m_p_index(i+2);
     // take the pre-computed range of frequencies corresponding to the bank 'i'
     blitz::Range slice_range = blitz::Range(first_fr, last_fr);
     // take the slice of data corresponding to those frequencies
