@@ -114,6 +114,7 @@ class FrameExtractor
     virtual void initWinSize();
     virtual void initWinLength();
     virtual void initWinShift();
+    virtual void initMaxRange();
 
     double m_sampling_frequency; ///< The sampling frequency
     double m_win_length_ms; ///< The window length in miliseconds
@@ -121,6 +122,7 @@ class FrameExtractor
     double m_win_shift_ms;
     size_t m_win_shift;
     size_t m_win_size;
+    double m_max_range; //half of the maximum possible dynamic range of the original signal (for 16 bits, it is 32768)
 
     mutable blitz::Array<double,1> m_cache_frame_d;
 };
